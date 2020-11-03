@@ -12,11 +12,11 @@ CXXFLAGS_DEBUG = -g -O0 -Wall
 CXXFLAGS_RELEASE = -DNDEBUG -O2
 
 # Libraries to link against
-LDLIBS = -static-libgcc -static-libstdc++
+LDLIBS =
 
 # Linker flags for debug/release builds
-LDFLAGS_DEBUG =
-LDFLAGS_RELEASE = -Wl,-O,--gc-sections,--strip-all
+LDFLAGS_DEBUG = -static
+LDFLAGS_RELEASE = -Wl,-O,--gc-sections,--strip-all -static
 
 # Directories to search for includes
 # Separate from CXXFLAGS so user can provide custom flags

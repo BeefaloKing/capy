@@ -2,24 +2,24 @@
 BIN = capy.exe
 
 # List of source files to be compiled
-FILES = main.c
+FILES = main.cpp automata.cpp
 
 # Compiler to use
-CC = gcc
+CC = g++
 
 # Compiler flags for debug/release builds
-CFLAGS_DEBUG = -g -Og -Wall
-CFLAGS_RELEASE = -DNDEBUG -O2
+CXXFLAGS_DEBUG = -g -O0 -Wall
+CXXFLAGS_RELEASE = -DNDEBUG -O2
 
 # Libraries to link against
-LDLIBS = -static-libgcc
+LDLIBS = -static-libgcc -static-libstdc++
 
 # Linker flags for debug/release builds
 LDFLAGS_DEBUG =
 LDFLAGS_RELEASE = -Wl,-O,--gc-sections,--strip-all
 
 # Directories to search for includes
-# Separate from CFLAGS so user can provide custom flags
+# Separate from CXXFLAGS so user can provide custom flags
 INCLUDE = -Iinclude
 
 ifeq ($(filter MINGW32 MINGW64,$(MSYSTEM)),)
@@ -38,17 +38,17 @@ FSUBDIRS := $(sort $(FSUBDIRS))
 all: debug
 
 # Set custom BUILD_TYPE if user provides custom flags
-ifeq ($(CFLAGS)$(LDFLAGS),)
+ifeq ($(CXXFLAGS)$(LDFLAGS),)
 debug: BUILD_TYPE = debug
 release: BUILD_TYPE = release
 else
 debug release: BUILD_TYPE = custom
 endif
 
-# Use default CFLAGS if user provides none
-ifeq ($(CFLAGS),)
-debug: export CFLAGS = $(CFLAGS_DEBUG)
-release: export CFLAGS = $(CFLAGS_RELEASE)
+# Use default CXXFLAGS if user provides none
+ifeq ($(CXXFLAGS),)
+debug: export CXXFLAGS = $(CXXFLAGS_DEBUG)
+release: export CXXFLAGS = $(CXXFLAGS_RELEASE)
 endif
 
 # Use default LDFLAGS if user provides none
@@ -78,17 +78,17 @@ clean-all:
 build: bin/$(BIN_PATH)/$(BIN)
 
 # Finish linking
-bin/$(BIN_PATH)/$(BIN): OBJECTS = $(patsubst %.c,bld/$(OBJ_PATH)/%.o,$(FILES))
+bin/$(BIN_PATH)/$(BIN): OBJECTS = $(patsubst %.cpp,bld/$(OBJ_PATH)/%.o,$(FILES))
 bin/$(BIN_PATH)/$(BIN): $$(OBJECTS)
-	$(CC) $^ $(CFLAGS) $(LDLIBS) $(LDFLAGS) -o $@
+	$(CC) $^ $(CXXFLAGS) $(LDLIBS) $(LDFLAGS) -o $@
 
 # Generate dependency files and compile objects
-bld/$(OBJ_PATH)/%.o: src/%.c bld/$(DEP_PATH)/%.d
-	$(CC) -MMD -MP -MF bld/$(DEP_PATH)/$*.d -c $< $(CFLAGS) $(INCLUDE) -o $@
+bld/$(OBJ_PATH)/%.o: src/%.cpp bld/$(DEP_PATH)/%.d
+	$(CC) -MMD -MP -MF bld/$(DEP_PATH)/$*.d -c $< $(CXXFLAGS) $(INCLUDE) -o $@
 
 # Include rules for generated dependencies
 ifdef DEP_PATH
-DEP_FILES = $(patsubst %.c,bld/$(DEP_PATH)/%.d,$(FILES))
+DEP_FILES = $(patsubst %.cpp,bld/$(DEP_PATH)/%.d,$(FILES))
 $(DEP_FILES):
 include $(wildcard $(DEP_FILES))
 endif

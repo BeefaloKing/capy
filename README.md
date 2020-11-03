@@ -24,3 +24,7 @@ Analyze Mode:
                 sequential reads but may increase total I/O.
                 Default: 1
 ```
+
+# TODO
+
+Let's be real. C++ will be much easier.

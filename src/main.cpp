@@ -1,3 +1,4 @@
+#include "automata.hh"
 #include <stdio.h>
 #include <stdint.h>
 

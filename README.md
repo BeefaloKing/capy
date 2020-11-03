@@ -1,8 +1,7 @@
 # Cellular Automata Pseudoranom Number Generator Analyzer (CAPY)
 
-## ECE 3710 Project
-
-### Ava Decker 10730830
+ECE 3710 Project by Ava Decker  
+10730830
 
 # Usage
 
@@ -11,7 +10,7 @@ capy.exe [options] <directory>
 Simulates a CA PRNG to and maps arbitrary output streams to all possible walks
 through the machines internal state.
 
-Generate Mode):
+Generate Mode:
 -g              Enables generate mode. If used with -a, will generate first.
 -s <cells>      Uses an automata of size <cells>. Must be between 1 and 64.
                 Default: 8

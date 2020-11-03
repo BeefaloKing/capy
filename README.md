@@ -6,24 +6,21 @@ ECE 3710 Project by Ava Decker
 # Usage
 
 ```
-capy.exe [options] <directory>
+Cellular Automata Pseudorandom number generator analYzer (CAPY).
+
 Simulates a CA PRNG to and maps arbitrary output streams to all possible walks
-through the machines internal state. Sate/output map indexes will be stored in
-<directory> which must be empty.
+through the machines internal state. Determines the total number of distinct
+output streams and distinct internal states (or superpositions of states) the
+machine can be determined to exist as the output stream grows in length.
 
-Generate Mode:
--g              Enables generate mode. If used with -a, will generate first.
--s <cells>      Uses an automata of size <cells>. Must be between 1 and 64.
-                Default: 8
--o <bits>       Read output of size <bits> from each state. Must be smaller
-                than <cells> specified from -s.
-                Default: 1
+Usage:
+capy.exe [options] <file>
 
-Analyze Mode:
--a              Enables analyze mode. if used with -g, will generate first.
--l <value>      Looks ahead <value> number of states in each read. Does bigger
-                sequential reads but may increase total I/O.
-                Default: 1
+Stores analysis in <file>.
+-s <size>   Uses an automata with <size> cells. Must be between 1 and 64.
+-o <cell>   Read output from the <cell>th cell. Must be less than <size>. Cells
+            are counted from right to left.
+            Default: 0
 ```
 
 # TODO

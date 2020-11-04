@@ -13,7 +13,14 @@ public:
 	bool validateBaseDir();
 
 	void setConfig(size_t cellSize, size_t outputSize);
+
+	// Potentially reduces file fragmentation
+	void preallocateMap();
+
+	static constexpr const char* CONFIG_NAME = "/settings.capy";
+	static constexpr const char* MAP_NAME = "/statemap.capy";
 private:
+
 	std::string dirPath;
 
 	size_t cellSize;

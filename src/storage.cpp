@@ -2,6 +2,7 @@
  */
 #include "storage.hh"
 #include "error.hh"
+#include <stdio.h>
 #include <string>
 #include <string.h>
 
@@ -51,7 +52,7 @@ void Storage::setConfig(size_t cellSize, size_t outputSize)
 	this->outputSize = outputSize;
 	diskSize = (cellSize + outputSize + 7) / 8; // Always round up instead of down.
 
-	const std::string configPath = dirPath + "/settings.capy";
+	const std::string configPath = dirPath + CONFIG_NAME;
 	FILE* configFile = fopen(configPath.c_str(), "w");
 	if (configFile == nullptr)
 	{
@@ -67,4 +68,31 @@ void Storage::setConfig(size_t cellSize, size_t outputSize)
 	}
 
 	fclose(configFile);
+}
+
+void Storage::preallocateMap()
+{
+	// Calculate file size
+	uint64_t mapSize = 1ll << cellSize; // Calculates 2^cellSize
+	mapSize *= diskSize; // Number of entries * size of each entry
+
+	// TODO: Human readable sizes
+	printf("Preallocating %lld bytes for state map.\n", mapSize);
+
+	const std::string mapPath = dirPath + MAP_NAME;
+	FILE* mapFile = fopen(mapPath.c_str(), "w");
+	if (mapFile == nullptr)
+	{
+		throwFileAccess(mapPath);
+	}
+
+	if (fseeko64(mapFile, mapSize - 1, SEEK_SET) != 0)
+	{
+		fclose(mapFile);
+		throwFileWrite(mapPath);
+	}
+	fputc('\0', mapFile); // Write past EOF to force allocation
+
+	// Sucessfully finished preallocating
+	fclose(mapFile);
 }

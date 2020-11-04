@@ -3,15 +3,18 @@
 #include "automata.hh"
 #include <stdint.h>
 
-Automata::Automata(size_t numCells, size_t numOutputs) :
-	cells(new uint8_t[numCells]), cellSwap(new uint8_t[numCells]), numCells(numCells),
-	outIndex(new size_t[numOutputs]), numOutputs(numOutputs)
+Automata::Automata(size_t cellSize, size_t outputSize) :
+	cells(new uint8_t[cellSize]),
+	cellSwap(new uint8_t[cellSize]),
+	cellSize(cellSize),
+	outIndex(new size_t[outputSize]),
+	outputSize(outputSize)
 {
-	// TODO: Throw if numOutputs > numCells or numCells > 64
-	size_t spacing = numCells / numOutputs;
-	size_t padding = numCells - (spacing * numOutputs - spacing + 1);
+	// TODO: Throw if outputSize > cellSize or cellSize > 64
+	size_t spacing = cellSize / outputSize;
+	size_t padding = cellSize - (spacing * outputSize - spacing + 1);
 	size_t index = padding / 2; // Padding is the space outside our evenly spaced output cells
-	for (size_t i = 0; i < numOutputs; i++)
+	for (size_t i = 0; i < outputSize; i++)
 	{
 		outIndex[i] = index;
 		index += spacing;
@@ -28,7 +31,7 @@ Automata::~Automata()
 void Automata::initState(uint64_t stateID)
 {
 	// stateID is equivalent to the bitmap of the states cells
-	for (size_t i = numCells; i-- > 0;)
+	for (size_t i = cellSize; i-- > 0;)
 	{
 		cells[i] = stateID & 1; // Extract rightmost bit of stateID
 		stateID >>= 1;
@@ -37,11 +40,11 @@ void Automata::initState(uint64_t stateID)
 
 void Automata::advanceState()
 {
-	for (size_t i = 0; i < numCells; i++)
+	for (size_t i = 0; i < cellSize; i++)
 	{
 		// Default to 0 for cells out of bounds
 		uint8_t left = (i == 0) ? 0 : cells[i - 1];
-		uint8_t right = (i == numCells - 1) ? 0 : cells[i + 1];
+		uint8_t right = (i == cellSize - 1) ? 0 : cells[i + 1];
 		uint8_t center = cells[i];
 
 		cellSwap[i] = left ^ (center | right); // Rule 30
@@ -58,7 +61,7 @@ uint64_t Automata::getOutput()
 	uint64_t output = 0;
 
 	uint64_t mask = 1; // Set rightmost bit of mask to 1
-	for (size_t i = numOutputs; i-- > 0;)
+	for (size_t i = outputSize; i-- > 0;)
 	{
 		size_t cellIndex = outIndex[i];
 		if (cells[cellIndex])

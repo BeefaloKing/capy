@@ -3,6 +3,11 @@
 #include "storage.hh"
 #include "error.hh"
 #include <string>
+#include <string.h>
+
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 Storage::Storage(const std::string &directory) :
 	dirPath(directory),
@@ -10,6 +15,35 @@ Storage::Storage(const std::string &directory) :
 	outputSize(0),
 	diskSize(0)
 {}
+
+bool Storage::validateBaseDir()
+{
+	struct stat dirStat = {};
+	if (stat(dirPath.c_str(), &dirStat) == -1) // Directory does not exist
+	{
+		if (mkdir(dirPath.c_str()) == -1) // Look at my ugly nonportable code!
+		{
+			throwDirCreate(dirPath);
+		}
+	}
+
+	bool isEmpty = true;
+	DIR* baseDir = opendir(dirPath.c_str());
+	dirent* entry;
+
+	while ((entry = readdir(baseDir)) != nullptr)
+	{
+		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+		{
+			continue; // Skip self and parent entires "." and ".."
+		}
+		isEmpty = false;
+		break;
+	}
+
+	closedir(baseDir);
+	return isEmpty;
+}
 
 void Storage::setConfig(size_t cellSize, size_t outputSize)
 {

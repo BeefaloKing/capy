@@ -9,6 +9,9 @@ class Storage
 public:
 	Storage(const std::string &directory);
 
+	// Returns true if directory is emtpy and creates it if it does not exist
+	bool validateBaseDir();
+
 	void setConfig(size_t cellSize, size_t outputSize);
 private:
 	std::string dirPath;

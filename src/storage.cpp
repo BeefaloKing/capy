@@ -80,6 +80,8 @@ void Storage::openIndexes(StorageMode mode)
 	size_t indexCount = 1 << outputSize;
 	const char* fileMode = mode == StorageMode::generate ? "w" : "r";
 
+	printf("Opening index files.\n");
+
 	for (size_t i = 0; i < indexCount; i++)
 	{
 		const std::string indexPath = dirPath + INDEX_PREFIX + std::to_string(i) + ".capy";
@@ -98,6 +100,8 @@ void Storage::setConfig(size_t cellSize, size_t outputSize)
 	this->cellSize = cellSize;
 	this->outputSize = outputSize;
 	diskSize = (cellSize + outputSize + 7) / 8; // Always round up instead of down
+
+	printf("Writing configuration to disk.\n");
 
 	const std::string configPath = dirPath + CONFIG_NAME;
 	FILE* configFile = fopen(configPath.c_str(), "w");

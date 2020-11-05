@@ -14,6 +14,7 @@ enum StorageMode
 class Storage
 {
 public:
+	Storage() = delete;
 	Storage(const std::string &directory, StorageMode mode);
 	~Storage();
 

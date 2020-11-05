@@ -5,17 +5,46 @@
 #include <stdio.h>
 #include <string>
 #include <string.h>
+#include <vector>
 
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-Storage::Storage(const std::string &directory) :
+Storage::Storage(const std::string &directory, StorageMode mode) :
 	dirPath(directory),
+	mapFile(nullptr),
 	cellSize(0),
 	outputSize(0),
 	diskSize(0)
-{}
+{
+	bool isEmpty = validateBaseDir();
+	if ((mode == StorageMode::generate) && !isEmpty) // Generate must start with an empty directory
+	{
+		throwDirFull(directory);
+	}
+
+	// Map is opened once to prevent opening on each write
+	const std::string mapPath = dirPath + MAP_NAME;
+	const char* fileMode = mode == StorageMode::generate ? "w" : "r";
+	mapFile = fopen(mapPath.c_str(), fileMode);
+	if (mapFile == nullptr)
+	{
+		throwFileAccess(mapPath);
+	}
+}
+
+Storage::~Storage()
+{
+	fclose(mapFile);
+	mapFile = nullptr;
+
+	while (!index.empty())
+	{
+		fclose(index.back());
+		index.pop_back();
+	}
+}
 
 bool Storage::validateBaseDir()
 {
@@ -46,11 +75,29 @@ bool Storage::validateBaseDir()
 	return isEmpty;
 }
 
+void Storage::openIndexes(StorageMode mode)
+{
+	size_t indexCount = 1 << outputSize;
+	const char* fileMode = mode == StorageMode::generate ? "w" : "r";
+
+	for (size_t i = 0; i < indexCount; i++)
+	{
+		const std::string indexPath = dirPath + INDEX_PREFIX + std::to_string(i) + ".capy";
+		FILE* indexFile = fopen(indexPath.c_str(), fileMode);
+		if (indexFile == nullptr)
+		{
+			throwFileAccess(indexPath);
+		}
+
+		index.push_back(indexFile);
+	}
+}
+
 void Storage::setConfig(size_t cellSize, size_t outputSize)
 {
 	this->cellSize = cellSize;
 	this->outputSize = outputSize;
-	diskSize = (cellSize + outputSize + 7) / 8; // Always round up instead of down.
+	diskSize = (cellSize + outputSize + 7) / 8; // Always round up instead of down
 
 	const std::string configPath = dirPath + CONFIG_NAME;
 	FILE* configFile = fopen(configPath.c_str(), "w");
@@ -68,6 +115,7 @@ void Storage::setConfig(size_t cellSize, size_t outputSize)
 	}
 
 	fclose(configFile);
+	openIndexes(StorageMode::generate);
 }
 
 void Storage::preallocateMap()
@@ -77,22 +125,34 @@ void Storage::preallocateMap()
 	mapSize *= diskSize; // Number of entries * size of each entry
 
 	// TODO: Human readable sizes
-	printf("Preallocating %lld bytes for state map.\n", mapSize);
-
-	const std::string mapPath = dirPath + MAP_NAME;
-	FILE* mapFile = fopen(mapPath.c_str(), "w");
-	if (mapFile == nullptr)
-	{
-		throwFileAccess(mapPath);
-	}
+	printf("Preallocating %llu bytes for state map.\n", mapSize);
 
 	if (fseeko64(mapFile, mapSize - 1, SEEK_SET) != 0)
 	{
-		fclose(mapFile);
-		throwFileWrite(mapPath);
+		throwFileWrite(MAP_NAME); // Maybe a little ugly
 	}
 	fputc('\0', mapFile); // Write past EOF to force allocation
+}
 
-	// Sucessfully finished preallocating
-	fclose(mapFile);
+void Storage::writeMapEntry(uint64_t state, uint64_t nextState, uint64_t output)
+{
+	uint64_t offset = diskSize * state;
+	uint64_t entry = (nextState << outputSize) | output;
+
+	fseeko64(mapFile, offset, SEEK_SET);
+	// Technically relies on little endian architecture
+	// Honestly a little disgusting
+	// Should be efficient though! :p
+	if (fwrite(&entry, sizeof(char), diskSize, mapFile) != diskSize)
+	{
+		throwFileWrite(MAP_NAME);
+	}
+}
+
+void Storage::writeIndex(uint64_t state, uint64_t output)
+{
+	if (fwrite(&state, diskSize, 1, index.at(output)) != 1)
+	{
+		throwFileWrite(INDEX_PREFIX);
+	}
 }

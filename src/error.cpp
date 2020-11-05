@@ -12,6 +12,12 @@ void throwDirCreate(const std::string &directory)
 	throw std::runtime_error(errMsg);
 }
 
+void throwDirFull(const std::string &directory)
+{
+	std::string errMsg = "Directory \"" + directory + "\" is not empty.\n";
+	throw std::runtime_error(errMsg);
+}
+
 void throwFileAccess(const std::string &filePath)
 {
 	// Can't wait until C++20 std::format

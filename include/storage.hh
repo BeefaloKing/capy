@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-enum StorageMode
+enum class StorageMode
 {
 	generate,
 	analyze,
@@ -17,6 +17,11 @@ public:
 	Storage() = delete;
 	Storage(const std::string &directory, StorageMode mode);
 	~Storage();
+
+	inline uint64_t getCellCount()
+	{
+		return cellCount;
+	}
 
 	void setConfig(size_t cellSize, size_t outputSize);
 	// void readConfig();
@@ -40,6 +45,7 @@ private:
 	std::vector<FILE*> index;
 
 	size_t cellSize;
+	uint64_t cellCount; // Must be able to hold 64 bit in which may be larger than size_t
 	size_t outputSize;
 	size_t diskSize; // Size of packed data on disk in bytes
 };

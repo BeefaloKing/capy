@@ -12,7 +12,7 @@ public:
 
 	void initState(uint64_t stateID);
 
-	void advanceState();
+	uint64_t advanceState(); // Returns the next stateID
 	uint64_t getOutput();
 private:
 	uint8_t* cells;

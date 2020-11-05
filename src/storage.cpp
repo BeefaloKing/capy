@@ -26,7 +26,7 @@ Storage::Storage(const std::string &directory, StorageMode mode) :
 
 	// Map is opened once to prevent opening on each write
 	const std::string mapPath = dirPath + MAP_NAME;
-	const char* fileMode = mode == StorageMode::generate ? "w" : "r";
+	const char* fileMode = mode == StorageMode::generate ? "wb" : "rb";
 	mapFile = fopen(mapPath.c_str(), fileMode);
 	if (mapFile == nullptr)
 	{
@@ -78,7 +78,7 @@ bool Storage::validateBaseDir()
 void Storage::openIndexes(StorageMode mode)
 {
 	size_t indexCount = 1 << outputSize; // Calculates 2^outputSize
-	const char* fileMode = mode == StorageMode::generate ? "w" : "r";
+	const char* fileMode = mode == StorageMode::generate ? "wb" : "rb";
 
 	printf("Opening index files.\n");
 
@@ -98,6 +98,7 @@ void Storage::openIndexes(StorageMode mode)
 void Storage::setConfig(size_t cellSize, size_t outputSize)
 {
 	this->cellSize = cellSize;
+	cellCount = 1ll << cellSize; // Calculates 2^cellSize
 	this->outputSize = outputSize;
 	diskSize = (cellSize + outputSize + 7) / 8; // Always round up instead of down
 
@@ -125,8 +126,7 @@ void Storage::setConfig(size_t cellSize, size_t outputSize)
 void Storage::preallocateMap()
 {
 	// Calculate file size
-	uint64_t mapSize = 1ll << cellSize; // Calculates 2^cellSize
-	mapSize *= diskSize; // Number of entries * size of each entry
+	uint64_t mapSize = cellCount * diskSize; // Number of entries * size of each entry
 
 	// TODO: Human readable sizes
 	printf("Preallocating %llu bytes for state map.\n", mapSize);
@@ -155,6 +155,7 @@ void Storage::writeMapEntry(uint64_t state, uint64_t nextState, uint64_t output)
 
 void Storage::writeIndex(uint64_t state, uint64_t output)
 {
+	// Also relies on little endian architecture
 	if (fwrite(&state, diskSize, 1, index.at(output)) != 1)
 	{
 		throwFileWrite(INDEX_PREFIX);

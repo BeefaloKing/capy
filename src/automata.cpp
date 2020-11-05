@@ -31,14 +31,14 @@ Automata::~Automata()
 void Automata::initState(uint64_t stateID)
 {
 	// stateID is equivalent to the bitmap of the states cells
-	for (size_t i = cellSize; i-- > 0;)
+	for (size_t i = cellSize; i-- > 0;) // Read bits right to left
 	{
 		cells[i] = stateID & 1; // Extract rightmost bit of stateID
 		stateID >>= 1;
 	}
 }
 
-void Automata::advanceState()
+uint64_t Automata::advanceState()
 {
 	for (size_t i = 0; i < cellSize; i++)
 	{
@@ -54,6 +54,16 @@ void Automata::advanceState()
 	uint8_t* temp = cells;
 	cells = cellSwap;
 	cellSwap = temp;
+
+	// Get stateID
+	uint64_t stateID = 0;
+	for (size_t i = 0; i < cellSize; i++) // Store bits left to right
+	{
+		stateID <<= 1;
+		stateID |= cells[i] & 1; // Set rightmost bit of stateID
+	}
+
+	return stateID;
 }
 
 uint64_t Automata::getOutput()

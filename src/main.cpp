@@ -1,5 +1,6 @@
 /* main.cpp
  */
+#include "generate.hh"
 
 int main (int argc, char* argv[])
 {

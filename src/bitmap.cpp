@@ -7,7 +7,7 @@ BitMap::BitMap(uint64_t bitSize) :
 	bitSize(bitSize)
 {
 	size_t arrayLen = (bitSize + 63) / 64; // Divide by number of bits in uint64_t and round up
-	map = new uint64_t[arrayLen];
+	map = new uint64_t[arrayLen] {0}; // Explicitly initialize bitmap to all zeros
 }
 
 BitMap::~BitMap()

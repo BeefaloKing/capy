@@ -31,3 +31,10 @@ void throwFileWrite(const std::string &filePath)
 		strerror(errno) + "\n";
 	throw std::runtime_error(errMsg);
 }
+
+void throwRange(const std::string &name, const uint64_t &index, const uint64_t &size)
+{
+	std::string errMsg = name + " access out of range. Tried to access index " +
+		std::to_string(index) + " when size is " + std::to_string(size) + ".\n";
+	throw std::out_of_range(errMsg);
+}

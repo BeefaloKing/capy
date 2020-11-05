@@ -2,7 +2,7 @@
 BIN = capy.exe
 
 # List of source files to be compiled
-FILES = main.cpp automata.cpp error.cpp storage.cpp
+FILES = main.cpp automata.cpp bitmap.cpp error.cpp storage.cpp
 
 # Compiler to use
 CC = g++

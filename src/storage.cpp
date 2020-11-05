@@ -77,7 +77,7 @@ bool Storage::validateBaseDir()
 
 void Storage::openIndexes(StorageMode mode)
 {
-	size_t indexCount = 1 << outputSize;
+	size_t indexCount = 1 << outputSize; // Calculates 2^outputSize
 	const char* fileMode = mode == StorageMode::generate ? "w" : "r";
 
 	printf("Opening index files.\n");

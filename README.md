@@ -28,4 +28,8 @@ Analyze Mode:
 
 # TODO
 
-Let's be real. C++ will be much easier.
+- Use human readable sizes.
+- Output progress.
+- Preallocate index files.
+- Check performance of buffering file writes.
+- Check performance of only writing indexes to disk.

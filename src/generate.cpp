@@ -12,7 +12,6 @@ void generate(const std::string &directory, size_t cellSize, size_t outputSize)
 	{
 		Storage files {directory, StorageMode::generate};
 		files.setConfig(cellSize, outputSize);
-		files.preallocateMap();
 
 		Automata ca {cellSize, outputSize};
 

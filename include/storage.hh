@@ -26,7 +26,6 @@ public:
 	void setConfig(size_t cellSize, size_t outputSize);
 	// void readConfig();
 
-	void preallocateMap(); // Potentially reduces file fragmentation
 	void writeMapEntry(uint64_t state, uint64_t nextState, uint64_t output);
 	// void readMapEntry(uint64_t state, uint64_t &nextState, uint64_t &output);
 	void writeIndex(uint64_t state, uint64_t output);
@@ -39,6 +38,9 @@ private:
 	// Returns true if directory is emtpy and creates it if it does not exist
 	bool validateBaseDir();
 	void openIndexes(StorageMode mode);
+	// Reduces file fragmentation
+	// Needs filePath for more useful debug and progress output
+	void preallocateFile(FILE* file, uint64_t fileSize, const std::string &filePath = "");
 
 	std::string dirPath;
 	FILE* mapFile;

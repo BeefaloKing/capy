@@ -91,6 +91,14 @@ void Storage::openIndexes(StorageMode mode)
 			throwFileAccess(indexPath);
 		}
 
+		if (mode == StorageMode::generate)
+		{
+			// Calculates index file size
+			// Number of cells * size of each cell / number of indexes
+			uint64_t fileSize = (cellCount * diskSize) / indexCount;
+			preallocateFile(indexFile, fileSize, indexPath);
+		}
+
 		index.push_back(indexFile);
 	}
 }
@@ -123,19 +131,18 @@ void Storage::setConfig(size_t cellSize, size_t outputSize)
 	openIndexes(StorageMode::generate);
 }
 
-void Storage::preallocateMap()
+void Storage::preallocateFile(FILE* file, uint64_t fileSize, const std::string &filePath)
 {
-	// Calculate file size
-	uint64_t mapSize = cellCount * diskSize; // Number of entries * size of each entry
-
 	// TODO: Human readable sizes
-	printf("Preallocating %llu bytes for state map.\n", mapSize);
+	printf("Preallocating %llu bytes for %s.\n", fileSize, filePath.c_str());
 
-	if (fseeko64(mapFile, mapSize - 1, SEEK_SET) != 0)
+	if (fseeko64(file, fileSize - 1, SEEK_SET) != 0)
 	{
-		throwFileWrite(MAP_NAME); // Maybe a little ugly
+		throwFileWrite(filePath);
 	}
-	fputc('\0', mapFile); // Write past EOF to force allocation
+	fputc('\0', file); // Write past EOF to force allocation
+
+	fseek(file, 0, SEEK_SET); // Reset position to begining of file
 }
 
 void Storage::writeMapEntry(uint64_t state, uint64_t nextState, uint64_t output)

@@ -4,81 +4,57 @@
 #include <stdint.h>
 
 Automata::Automata(size_t cellSize, size_t outputSize) :
-	cells(new uint8_t[cellSize]),
-	cellSwap(new uint8_t[cellSize]),
+	cells(0),
 	cellSize(cellSize),
-	outIndex(new size_t[outputSize]),
+	outMask(new uint64_t[outputSize]),
 	outputSize(outputSize)
 {
 	// TODO: Throw if outputSize > cellSize or cellSize > 64
 	size_t spacing = cellSize / outputSize;
 	size_t padding = cellSize - (spacing * outputSize - spacing + 1);
-	size_t index = padding / 2; // Padding is the space outside our evenly spaced output cells
-	for (size_t i = 0; i < outputSize; i++)
+	size_t bitPos = padding / 2; // Padding is the space outside our evenly spaced output cells
+
+	for (uint64_t i = 0; i < outputSize; i++)
 	{
-		outIndex[i] = index;
-		index += spacing;
+		outMask[i] = 1ull << bitPos;
+		bitPos += spacing;
 	}
 }
 
 Automata::~Automata()
 {
-	delete[] cells;
-	delete[] cellSwap;
-	delete[] outIndex;
+	delete[] outMask;
 }
 
 void Automata::initState(uint64_t stateID)
 {
 	// stateID is equivalent to the bitmap of the states cells
-	for (size_t i = cellSize; i-- > 0;) // Read bits right to left
-	{
-		cells[i] = stateID & 1; // Extract rightmost bit of stateID
-		stateID >>= 1;
-	}
+	cells = stateID;
 }
 
 uint64_t Automata::advanceState()
 {
-	for (size_t i = 0; i < cellSize; i++)
-	{
-		// Default to 0 for cells out of bounds
-		uint8_t left = (i == 0) ? 0 : cells[i - 1];
-		uint8_t right = (i == cellSize - 1) ? 0 : cells[i + 1];
-		uint8_t center = cells[i];
+	uint64_t left = cells >> 1; // Each position contains the bit originally on its left
+	uint64_t right = cells << 1; // Each position contains the bit originally on its right
 
-		cellSwap[i] = left ^ (center | right); // Rule 30
-	}
+	cells = left ^ (cells | right); // Rule 30
 
-	// Swap out "framebuffer"
-	uint8_t* temp = cells;
-	cells = cellSwap;
-	cellSwap = temp;
-
-	// Get stateID
-	uint64_t stateID = 0;
-	for (size_t i = 0; i < cellSize; i++) // Store bits left to right
-	{
-		stateID <<= 1;
-		stateID |= cells[i] & 1; // Set rightmost bit of stateID
-	}
-
-	return stateID;
+	// Returns next stateID
+	return cells;
 }
 
 uint64_t Automata::getOutput()
 {
 	uint64_t output = 0;
 
-	uint64_t mask = 1; // Set rightmost bit of mask to 1
+	uint64_t cursor = 1; // Set rightmost bit of cursor to 1
 	for (size_t i = outputSize; i-- > 0;)
 	{
-		size_t cellIndex = outIndex[i];
-		if (cells[cellIndex])
+		if (cells & outMask[i])
 		{
-			output |= mask; // Set output bit at mask position to 1 if cell contains 1
+			output |= cursor; // Set output bit at mask position to 1 if cell contains 1
 		}
-		mask <<= 1; // Shift mask
+		cursor <<= 1; // Shift mask
 	}
 
 	return output;

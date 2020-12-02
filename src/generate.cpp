@@ -19,11 +19,8 @@ void generate(const std::string &directory, size_t cellSize, size_t outputSize)
 		{
 			ca.initState(currentState);
 
-			uint64_t output = ca.getOutput(); // Cannot inline as these must execute in order
-			uint64_t nextState = ca.advanceState(); // We also need to save output before advancing
-
-			files.writeMapEntry(currentState, nextState, output);
-			files.writeIndex(currentState, output);
+			files.writeIndex(currentState, ca.getOutput());
+			ca.advanceState();
 		}
 
 	}

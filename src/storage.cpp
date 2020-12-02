@@ -13,7 +13,6 @@
 
 Storage::Storage(const std::string &directory, StorageMode mode) :
 	dirPath(directory),
-	mapFile(nullptr),
 	cellSize(0),
 	outputSize(0),
 	diskSize(0)
@@ -23,22 +22,10 @@ Storage::Storage(const std::string &directory, StorageMode mode) :
 	{
 		throwDirFull(directory);
 	}
-
-	// Map is opened once to prevent opening on each write
-	const std::string mapPath = dirPath + MAP_NAME;
-	const char* fileMode = mode == StorageMode::generate ? "wb" : "rb";
-	mapFile = fopen(mapPath.c_str(), fileMode);
-	if (mapFile == nullptr)
-	{
-		throwFileAccess(mapPath);
-	}
 }
 
 Storage::~Storage()
 {
-	fclose(mapFile);
-	mapFile = nullptr;
-
 	while (!index.empty())
 	{
 		fclose(index.back());
@@ -143,21 +130,6 @@ void Storage::preallocateFile(FILE* file, uint64_t fileSize, const std::string &
 	fputc('\0', file); // Write past EOF to force allocation
 
 	fseek(file, 0, SEEK_SET); // Reset position to begining of file
-}
-
-void Storage::writeMapEntry(uint64_t state, uint64_t nextState, uint64_t output)
-{
-	uint64_t offset = diskSize * state;
-	uint64_t entry = (nextState << outputSize) | output;
-
-	fseeko64(mapFile, offset, SEEK_SET);
-	// Technically relies on little endian architecture
-	// Honestly a little disgusting
-	// Should be efficient though! :p
-	if (fwrite(&entry, sizeof(char), diskSize, mapFile) != diskSize)
-	{
-		throwFileWrite(MAP_NAME);
-	}
 }
 
 void Storage::writeIndex(uint64_t state, uint64_t output)

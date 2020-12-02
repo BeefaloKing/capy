@@ -8,7 +8,7 @@ ECE 3710 Project by Ava Decker
 ```
 capy.exe [options] <directory>
 Simulates a CA PRNG to and maps arbitrary output streams to all possible walks
-through the machines internal state. Sate/output mapping will be stored in
+through the machines internal state. Sate/output map indexes will be stored in
 <directory> which must be empty.
 
 Generate Mode:
@@ -30,6 +30,5 @@ Analyze Mode:
 
 - Use human readable sizes.
 - Output progress.
-- Preallocate index files.
 - Check performance of buffering file writes.
 - Check performance of only writing indexes to disk.

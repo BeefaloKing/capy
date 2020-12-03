@@ -13,6 +13,9 @@
 
 Storage::Storage(const std::string &directory, StorageMode mode) :
 	dirPath(directory),
+	mode(mode),
+	indexFile(nullptr),
+	treeFile(nullptr),
 	cellSize(0),
 	outputSize(0),
 	diskSize(0)
@@ -26,11 +29,9 @@ Storage::Storage(const std::string &directory, StorageMode mode) :
 
 Storage::~Storage()
 {
-	while (!index.empty())
-	{
-		fclose(index.back());
-		index.pop_back();
-	}
+	closeSwaps();
+	fclose(indexFile);
+	fclose(treeFile);
 }
 
 bool Storage::validateBaseDir()
@@ -62,31 +63,75 @@ bool Storage::validateBaseDir()
 	return isEmpty;
 }
 
-void Storage::openIndexes(StorageMode mode)
+void Storage::openSwaps()
 {
-	size_t indexCount = 1 << outputSize; // Calculates 2^outputSize
-	const char* fileMode = mode == StorageMode::generate ? "wb" : "rb";
+	size_t swapCount = 1 << outputSize; // Calculates 2^outputSize
+	const char* fileMode = (mode == StorageMode::generate ? "w+b" : "rb");
 
-	printf("Opening index files.\n");
+	printf("Opening swap files.\n");
 
-	for (size_t i = 0; i < indexCount; i++)
+	for (size_t i = 0; i < swapCount; i++)
 	{
-		const std::string indexPath = dirPath + INDEX_PREFIX + std::to_string(i) + ".capy";
-		FILE* indexFile = fopen(indexPath.c_str(), fileMode);
-		if (indexFile == nullptr)
+		const std::string swapPath = dirPath + SWAP_PREFIX + std::to_string(i) + ".capy";
+		FILE* swap = fopen(swapPath.c_str(), fileMode);
+		if (swap == nullptr)
 		{
-			throwFileAccess(indexPath);
+			throwFileAccess(swapPath);
 		}
 
 		if (mode == StorageMode::generate)
 		{
-			// Calculates index file size
 			// Number of cells * size of each cell / number of indexes
-			uint64_t fileSize = (cellCount * diskSize) / indexCount;
-			preallocateFile(indexFile, fileSize, indexPath);
+			uint64_t fileSize = (cellCount * diskSize) / swapCount;
+			preallocateFile(swap, fileSize, swapPath);
 		}
 
-		index.push_back(indexFile);
+		swapFile.push_back(swap);
+		swapSize.push_back(0); // Initialize count of entries in each swap file to 0
+	}
+}
+
+void Storage::closeSwaps()
+{
+	while (!swapFile.empty())
+	{
+		fclose(swapFile.back());
+		swapFile.pop_back();
+		swapSize.pop_back();
+	}
+}
+
+void Storage::openIndex()
+{
+	const char* fileMode = (mode == StorageMode::generate ? "w+b" : "rb");
+
+	printf("Opening index file.\n");
+
+	const std::string indexPath = dirPath + INDEX_NAME;
+	indexFile = fopen(indexPath.c_str(), fileMode);
+	if (indexFile == nullptr)
+	{
+		throwFileAccess(indexPath);
+	}
+
+	if (mode == StorageMode::generate)
+	{
+		uint64_t fileSize = cellCount * diskSize;
+		preallocateFile(indexFile, fileSize, indexPath);
+	}
+}
+
+void Storage::openTree()
+{
+	const char* fileMode = (mode == StorageMode::generate ? "w+b" : "rb");
+
+	printf("Opening tree file.\n");
+
+	const std::string treePath = dirPath + TREE_NAME;
+	treeFile = fopen(treePath.c_str(), fileMode);
+	if (treeFile == nullptr)
+	{
+		throwFileAccess(treePath);
 	}
 }
 
@@ -95,7 +140,7 @@ void Storage::setConfig(size_t cellSize, size_t outputSize)
 	this->cellSize = cellSize;
 	cellCount = 1ll << cellSize; // Calculates 2^cellSize
 	this->outputSize = outputSize;
-	diskSize = (cellSize + outputSize + 7) / 8; // Always round up instead of down
+	diskSize = (cellSize + 7) / 8; // Always round up instead of down
 
 	printf("Writing configuration to disk.\n");
 
@@ -115,7 +160,10 @@ void Storage::setConfig(size_t cellSize, size_t outputSize)
 	}
 
 	fclose(configFile);
-	openIndexes(StorageMode::generate);
+
+	openSwaps();
+	openIndex();
+	openTree();
 }
 
 void Storage::preallocateFile(FILE* file, uint64_t fileSize, const std::string &filePath)
@@ -132,11 +180,42 @@ void Storage::preallocateFile(FILE* file, uint64_t fileSize, const std::string &
 	fseek(file, 0, SEEK_SET); // Reset position to begining of file
 }
 
-void Storage::writeIndex(uint64_t state, uint64_t output)
+void Storage::writeSwap(uint64_t state, uint64_t output)
 {
 	// Also relies on little endian architecture
-	if (fwrite(&state, diskSize, 1, index.at(output)) != 1)
+	if (fwrite(&state, diskSize, 1, swapFile.at(output)) != 1)
 	{
-		throwFileWrite(INDEX_PREFIX);
+		throwFileWrite(SWAP_PREFIX);
 	}
+	swapSize.at(output)++;
+}
+
+// TODO: Determine position in tree and only overwrite that portion of the index
+void Storage::mergeSwap()
+{
+	char entryBuffer[diskSize];
+
+	// uint64_t indexPosition = tree...
+	fseeko64(indexFile, 0, SEEK_SET); // Seek to index position pointed to by tree data
+
+	for (size_t i = 0; i < swapSize.size(); i++)
+	{
+		fseeko64(swapFile.at(i), 0, SEEK_SET); // Return to begining of each swap file
+		for (uint64_t j = 0; j < swapSize.at(i); j++)
+		{
+			if (fread(entryBuffer, diskSize, 1, swapFile.at(i)) != 1)
+			{
+				throwFileRead(SWAP_PREFIX);
+			}
+
+			if (fwrite(entryBuffer, sizeof(entryBuffer), 1, indexFile) != 1)
+			{
+				throwFileWrite(INDEX_NAME);
+			}
+		}
+	}
+
+	// Clear swap files
+	closeSwaps();
+	openSwaps();
 }

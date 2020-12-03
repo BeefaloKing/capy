@@ -32,6 +32,13 @@ void throwFileWrite(const std::string &filePath)
 	throw std::runtime_error(errMsg);
 }
 
+void throwFileRead(const std::string &filePath)
+{
+	std::string errMsg = "Unknown error reading from file \"" + filePath + "\": " +
+		strerror(errno) + "\n";
+	throw std::runtime_error(errMsg);
+}
+
 void throwRange(const std::string &name, const uint64_t &index, const uint64_t &size)
 {
 	std::string errMsg = name + " access out of range. Tried to access index " +

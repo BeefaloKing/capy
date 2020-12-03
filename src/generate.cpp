@@ -15,14 +15,14 @@ void generate(const std::string &directory, size_t cellSize, size_t outputSize)
 
 		Automata ca {cellSize, outputSize};
 
+		// Initialize swaps
 		for (uint64_t currentState = 0; currentState < files.getCellCount(); currentState++)
 		{
 			ca.initState(currentState);
 
-			files.writeIndex(currentState, ca.getOutput());
-			ca.advanceState();
+			files.writeSwap(currentState, ca.getOutput());
 		}
-
+		files.mergeSwap();
 	}
 	catch (const std::exception &e)
 	{

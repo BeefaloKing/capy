@@ -101,7 +101,7 @@ void Storage::closeSwaps()
 	}
 }
 
-void Storage::openIndex()
+void Storage::openIndexFile()
 {
 	const char* fileMode = (mode == StorageMode::generate ? "w+b" : "rb");
 
@@ -121,7 +121,7 @@ void Storage::openIndex()
 	}
 }
 
-void Storage::openTree()
+void Storage::openTreeFile()
 {
 	const char* fileMode = (mode == StorageMode::generate ? "w+b" : "rb");
 
@@ -161,9 +161,13 @@ void Storage::setConfig(size_t cellSize, size_t outputSize)
 
 	fclose(configFile);
 
+	// Root node will always point to the entirety of the index array
+	*tree.begin() = new StateSet {0, cellCount};
+	// Initialize treeIndex to root
+	treeIndex = 0;
+
 	openSwaps();
-	openIndex();
-	openTree();
+	openIndexFile();
 }
 
 void Storage::preallocateFile(FILE* file, uint64_t fileSize, const std::string &filePath)
@@ -193,11 +197,52 @@ void Storage::writeSwap(uint64_t state, uint64_t output)
 // TODO: Determine position in tree and only overwrite that portion of the index
 void Storage::mergeSwap()
 {
+	StateNode it = tree.begin() + treeIndex;
+
+	uint64_t indexStart = (*it)->index;
+	fseeko64(indexFile, indexStart, SEEK_SET); // Seek to index position pointed to by tree data
+
+	// Here is where we killed the idea of having more than 1 bit of output at a time
+	uint64_t leftSize = swapSize.at(0);
+	uint64_t rightSize = swapSize.at(1);
+
+	// If one child contains no states (and the other contains the same states as the parent),
+	// then this particular bit of output does not contain any information.
+	// If we recieved no information from the last P bits, where P is equal to the number of
+	// states in our current set, then no further bits will provide information either.
+	// Effectively, we are unable to determine the state of the machine,
+	// but can determine the entire rest of the bitstream.
+	// Early out, as there is no need to continue generating nodes down this path.
+	bool earlyOut = false;
+	if (leftSize == 0 || rightSize == 0)
+	{
+		earlyOut = true;
+
+		StateNode ancestor = it;
+		for (size_t i = 0; i < (*it)->length; i++)
+		{
+			ancestor = it.parent();
+			if ((*ancestor)->length == (*it)->length)
+			{
+				continue;
+			}
+			else
+			{
+				// We recieved information less than P bits ago
+				// It is not yet safe to early out
+				earlyOut = false;
+				break;
+			}
+		}
+	}
+
+	if (!earlyOut)
+	{
+		*it.left() = new StateSet {indexStart, leftSize};
+		*it.right() = new StateSet {indexStart + leftSize, rightSize};
+	}
+
 	char entryBuffer[diskSize];
-
-	// uint64_t indexPosition = tree...
-	fseeko64(indexFile, 0, SEEK_SET); // Seek to index position pointed to by tree data
-
 	for (size_t i = 0; i < swapSize.size(); i++)
 	{
 		fseeko64(swapFile.at(i), 0, SEEK_SET); // Return to begining of each swap file
@@ -214,8 +259,64 @@ void Storage::mergeSwap()
 			}
 		}
 	}
+}
 
-	// Clear swap files
-	closeSwaps();
-	openSwaps();
+bool Storage::advStateSet()
+{
+	while (tree.begin() + treeIndex != tree.end())
+	{
+		treeIndex++;
+
+		StateNode it = tree.begin() + treeIndex;
+		if (*it && (*it)->length != 0)	// Next valid StateSet found
+		{
+			StateSet* currentSet = *it;
+
+			// Seek to indexFile position from the index specified by the current StateSet
+			fseeko64(indexFile, currentSet->index, SEEK_SET);
+			for (size_t i = 0; i < swapFile.size(); i++)
+			{
+				rewind(swapFile.at(i)); // Seek to begining of each swap file
+				swapSize.at(i) = 0; // Reset count of swap entries to 0
+			}
+
+			return true;
+		}
+	}
+
+	return false; // No next valid StateSet
+}
+
+size_t Storage::getDepth()
+{
+	size_t depth = 0;
+	size_t dividend = treeIndex;
+	while (dividend > 0)
+	{
+		dividend = (dividend - 1) / 2; // Iterate up parent nodes until we reach root
+		depth++;
+	}
+
+	return depth;
+}
+
+bool Storage::getNextState(uint64_t &state)
+{
+	static size_t stateCount = 0;
+
+	StateSet* currentSet = *(tree.begin() + treeIndex);
+	if (stateCount < currentSet->length)
+	{
+		if (fread(&state, diskSize, 1, indexFile) != 1)
+		{
+			throwFileRead(INDEX_NAME);
+		}
+
+		stateCount++;
+		return true;
+	}
+
+	// Reset stateCount to 0 when no next state in current set remains
+	stateCount = 0;
+	return false;
 }

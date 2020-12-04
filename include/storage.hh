@@ -2,6 +2,7 @@
  * Used for reading and writing to the stored state/output mapping
  */
 #pragma once
+#include "statetree.hh"
 #include <string>
 #include <vector>
 
@@ -31,6 +32,15 @@ public:
 
 	void mergeSwap();
 
+	// Finds the next non-null and non-empty StateSet
+	// Returns false if none exist
+	bool advStateSet();
+	// Returns the tree depth of the current StateSet
+	size_t getDepth();
+	// Gets next state read from indexFile based on the current StateSet
+	// Returns false if there is no next state to read
+	bool getNextState(uint64_t &state);
+
 	static constexpr const char* CONFIG_NAME = "/settings.capy";
 	static constexpr const char* SWAP_PREFIX = "/swap";
 	static constexpr const char* INDEX_NAME = "/index.capy";
@@ -38,8 +48,8 @@ public:
 private:
 	// Returns true if directory is emtpy and creates it if it does not exist
 	bool validateBaseDir();
-	void openIndex();
-	void openTree();
+	void openIndexFile();
+	void openTreeFile();
 
 	void openSwaps();
 	void closeSwaps();
@@ -53,7 +63,10 @@ private:
 	FILE* indexFile;
 	FILE* treeFile;
 	std::vector<FILE*> swapFile;
-	std::vector<size_t> swapSize; // Counts number of entries in each swap file
+	std::vector<uint64_t> swapSize; // Counts number of entries in each swap file
+
+	StateTree tree;
+	size_t treeIndex;
 
 	size_t cellSize;
 	uint64_t cellCount; // Must be able to hold 64 bits which may be larger than size_t

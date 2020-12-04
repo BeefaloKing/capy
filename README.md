@@ -28,7 +28,6 @@ Analyze Mode:
 
 # TODO
 
+- Write tree to disk.
 - Use human readable sizes.
 - Output progress.
-- Check performance of buffering file writes.
-- Check performance of only writing indexes to disk.

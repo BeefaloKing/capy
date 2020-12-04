@@ -2,8 +2,8 @@
  * Used to efficiently store boolean data
  */
 #pragma once
-#include <stdint.h>
 #include "error.hh"
+#include <stdint.h>
 
 class BitMap
 {

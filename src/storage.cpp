@@ -2,6 +2,7 @@
  */
 #include "storage.hh"
 #include "error.hh"
+#include "utils.hh"
 #include <stdio.h>
 #include <string>
 #include <string.h>
@@ -187,8 +188,7 @@ void Storage::setConfig(size_t cellSize, size_t outputSize)
 
 void Storage::preallocateFile(FILE* file, uint64_t fileSize, const std::string &filePath)
 {
-	// TODO: Human readable sizes
-	printf("Preallocating %llu bytes for %s.\n", fileSize, filePath.c_str());
+	printf("Preallocating %s for %s.\n", getHumanSize(fileSize).c_str(), filePath.c_str());
 	fflush(stdout);
 
 	if (fseeko64(file, fileSize - 1, SEEK_SET) != 0)
@@ -210,7 +210,6 @@ void Storage::writeSwap(uint64_t state, uint64_t output)
 	swapSize.at(output)++;
 }
 
-// TODO: Determine position in tree and only overwrite that portion of the index
 void Storage::mergeSwap()
 {
 	StateNode it = tree.begin() + treeIndex;

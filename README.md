@@ -29,5 +29,3 @@ Analyze Mode:
 # TODO
 
 - Write tree to disk.
-- Use human readable sizes.
-- Output progress.

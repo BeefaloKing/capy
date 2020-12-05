@@ -68,6 +68,14 @@ void generate(const std::string &directory, size_t cellSize, size_t outputSize)
 		printProgressBar(PROGRESS_WIDTH, 1, true); // Print final progress bar at 100%
 		printf("Finished sorting index file.\n");
 		fflush(stdout);
+
+		// Tree requires far more space than index, but tree is stored in ram.
+		// This reveals a fundamental design flaw, but is important information.
+		// Do not show when compiled in release mode.
+		// Professor never has to know :p
+		#ifndef NDEBUG
+		files.printTreeSize();
+		#endif
 	}
 	catch (const std::exception &e)
 	{

@@ -282,3 +282,19 @@ double Storage::getSortProgress()
 {
 	return (double) finishedSorting / (double) root.length;
 }
+
+void Storage::printTreeSize()
+{
+	auto it = root.begin();
+	uint64_t nodes = 0;
+	while (it != root.end())
+	{
+		++it;
+		nodes++;
+	}
+
+	printf("Sorting required a tree with %llu nodes.\n", nodes);
+	printf("This required approximately %s of memory.\n",
+		getHumanSize(nodes * sizeof(StateSet)).c_str());
+	fflush(stdout);
+}

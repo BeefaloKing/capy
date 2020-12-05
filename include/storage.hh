@@ -42,6 +42,7 @@ public:
 	bool getNextState(uint64_t &state);
 
 	double getSortProgress(); // Returns progress as value between 0 and 1
+	void printTreeSize();
 
 	static constexpr const char* SWAP_PREFIX = "/swap";
 	static constexpr const char* INDEX_NAME = "/index.capy";

@@ -28,4 +28,4 @@ Analyze Mode:
 
 # TODO
 
-- Write tree to disk.
+- Remove generate module.

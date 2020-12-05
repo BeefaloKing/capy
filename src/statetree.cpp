@@ -2,135 +2,81 @@
  */
 #include "statetree.hh"
 #include <stdexcept>
-#include <stdint.h>
-#include <vector>
 
-StateTree::StateTree()
+StateSet::StateSet() :
+	index(0),
+	length(0),
+	parent(nullptr),
+	left(nullptr),
+	right(nullptr)
 {}
 
-StateTree::~StateTree()
-{
-	while (!nodes.empty())
-	{
-		if (nodes.back())
-		{
-			delete nodes.back();
-		}
-		nodes.pop_back();
-	}
-}
-
-StateNode StateTree::begin()
-{
-	return StateNode {*this, 0};
-}
-
-StateNode StateTree::end()
-{
-	return StateNode {*this, -1ul};
-}
-
-StateSet* &StateTree::getStates(size_t index)
-{
-	if (index == -1ul)
-	{
-		throw std::out_of_range {"StateTree dereference end() check"};
-	}
-	if (index >= nodes.size()) // Index of null child node may be out of range
-	{
-		nodes.resize(index + 1, nullptr); // Resize to index + 1
-	}
-
-	return nodes.at(index);
-}
-
-StateNode::StateNode(StateTree &tree, size_t treeIndex) :
-	tree(tree),
-	treeIndex(treeIndex)
+StateSet::StateSet(uint64_t index, uint64_t length, StateSet* parent) :
+	index(index),
+	length(length),
+	parent(parent),
+	left(nullptr),
+	right(nullptr)
 {}
 
-StateNode::StateNode(const StateNode &other) :
-	tree(other.tree),
-	treeIndex(other.treeIndex)
+StateSet::~StateSet()
+{
+	// Recursively deletes all nodes as each child destructs
+	delete left;
+	delete right;
+}
+
+StateSetIterator StateSet::begin()
+{
+	return StateSetIterator {this};
+}
+
+StateSetIterator StateSet::end()
+{
+	return StateSetIterator {};
+}
+
+StateSetIterator::StateSetIterator() :
+	current(nullptr),
+	depth(0)
 {}
 
-StateSet* &StateNode::operator*()
-{
-	return tree.getStates(treeIndex);
-}
+StateSetIterator::StateSetIterator(StateSet* current) :
+	current(current),
+	depth(0)
+{}
 
-StateSet** StateNode::operator->()
+// Remember right and traverse down left
+// Goto last remembered node if left is null
+StateSetIterator &StateSetIterator::operator++()
 {
-	return &tree.getStates(treeIndex);
-}
-
-StateNode &StateNode::operator+(size_t index)
-{
-	treeIndex += index;
-	return *this;
-}
-
-bool StateNode::operator==(const StateNode &other)
-{
-	if (&tree != &other.tree)
+	if (!current)
 	{
-		return false;
+		throw std::out_of_range {"StateSetIterator range check"};
 	}
 
-	if (treeIndex == other.treeIndex)
+	if (current->right)
 	{
-		return true;
+		setStack.push_back(current->right);
+		depthStack.push_back(depth + 1);
 	}
 
-	StateSet* thisSet = (treeIndex < tree.size()) ? **this : nullptr;
-	StateSet* otherSet = (other.treeIndex < other.tree.size()) ?
-		other.tree.getStates(other.treeIndex) : nullptr;
-
-	return thisSet == otherSet;
-}
-
-bool StateNode::operator!=(const StateNode &other)
-{
-	return !(*this == other);
-}
-
-StateNode &StateNode::operator=(const StateNode &other)
-{
-	tree = other.tree;
-	treeIndex = other.treeIndex;
+	if (current->left)
+	{
+		current = current->left;
+		depth++;
+	}
+	else if (!setStack.empty())
+	{
+		current = setStack.back();
+		depth = depthStack.back();
+		setStack.pop_back();
+		depthStack.pop_back();
+	}
+	else // Nothing left
+	{
+		current = nullptr;
+	}
 
 	return *this;
-}
-
-StateNode StateNode::parent()
-{
-	if (**this == nullptr)
-	{
-		throw std::out_of_range {"StateTree range check"};
-	}
-
-	size_t parentIndex = (treeIndex - 1) / 2;
-	return StateNode {tree, parentIndex};
-}
-
-StateNode StateNode::left()
-{
-	if (**this == nullptr)
-	{
-		throw std::out_of_range {"StateTree range check"};
-	}
-
-	size_t leftIndex = treeIndex * 2 + 1;
-	return StateNode {tree, leftIndex};
-}
-
-StateNode StateNode::right()
-{
-	if (**this == nullptr)
-	{
-		throw std::out_of_range {"StateTree range check"};
-	}
-
-	size_t rightIndex = treeIndex * 2 + 2;
-	return StateNode {tree, rightIndex};
 }

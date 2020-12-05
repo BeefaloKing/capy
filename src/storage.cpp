@@ -19,7 +19,8 @@ Storage::Storage(const std::string &directory, StorageMode mode) :
 	treeFile(nullptr),
 	cellSize(0),
 	outputSize(0),
-	diskSize(0)
+	diskSize(0),
+	finishedSorting(0)
 {
 	bool isEmpty = validateBaseDir();
 	if ((mode == StorageMode::generate) && !isEmpty) // Generate must start with an empty directory
@@ -135,21 +136,6 @@ void Storage::openIndexFile()
 	}
 }
 
-void Storage::openTreeFile()
-{
-	const char* fileMode = (mode == StorageMode::generate ? "w+b" : "rb");
-
-	printf("Opening tree file.\n");
-	fflush(stdout);
-
-	const std::string treePath = dirPath + TREE_NAME;
-	treeFile = fopen(treePath.c_str(), fileMode);
-	if (treeFile == nullptr)
-	{
-		throwFileAccess(treePath);
-	}
-}
-
 void Storage::setConfig(size_t cellSize, size_t outputSize)
 {
 	this->cellSize = cellSize;
@@ -157,47 +143,13 @@ void Storage::setConfig(size_t cellSize, size_t outputSize)
 	this->outputSize = outputSize;
 	diskSize = (cellSize + 7) / 8; // Always round up instead of down
 
-	printf("Writing configuration to disk.\n");
-	fflush(stdout);
-
-	const std::string configPath = dirPath + CONFIG_NAME;
-	FILE* configFile = fopen(configPath.c_str(), "w");
-	if (configFile == nullptr)
-	{
-		throwFileAccess(dirPath);
-	}
-
-	// Ensure that size on disk is platform agnostic
-	uint64_t diskElements[] = {cellSize, outputSize, diskSize};
-	size_t count = fwrite(diskElements, sizeof(diskElements), 1, configFile);
-	if (count != 1)
-	{
-		throwFileWrite(configPath);
-	}
-
-	fclose(configFile);
-
 	// Root node will always point to the entirety of the index array
-	*tree.begin() = new StateSet {0, cellCount};
-	// Initialize treeIndex to root
-	treeIndex = 0;
+	root = StateSet {0, cellCount};
+	// Initialize currentSet to root
+	currentSet = root.begin();
 
 	openSwaps();
 	openIndexFile();
-}
-
-void Storage::preallocateFile(FILE* file, uint64_t fileSize, const std::string &filePath)
-{
-	printf("Preallocating %s for %s.\n", getHumanSize(fileSize).c_str(), filePath.c_str());
-	fflush(stdout);
-
-	if (fseeko64(file, fileSize - 1, SEEK_SET) != 0)
-	{
-		throwFileWrite(filePath);
-	}
-	fputc('\0', file); // Write past EOF to force allocation
-
-	fseek(file, 0, SEEK_SET); // Reset position to begining of file
 }
 
 void Storage::writeSwap(uint64_t state, uint64_t output)
@@ -212,9 +164,7 @@ void Storage::writeSwap(uint64_t state, uint64_t output)
 
 void Storage::mergeSwap()
 {
-	StateNode it = tree.begin() + treeIndex;
-
-	uint64_t indexStart = (*it)->index;
+	uint64_t indexStart = currentSet->index;
 	fseeko64(indexFile, indexStart, SEEK_SET); // Seek to index position pointed to by tree data
 
 	// Here is where we killed the idea of having more than 1 bit of output at a time
@@ -233,11 +183,11 @@ void Storage::mergeSwap()
 	{
 		earlyOut = true;
 
-		StateNode ancestor = it;
-		for (size_t i = 0; i < (*it)->length; i++)
+		StateSet* ancestor = currentSet;
+		for (uint64_t i = 0; i < currentSet->length; i++)
 		{
-			ancestor = it.parent();
-			if ((*ancestor)->length == (*it)->length)
+			ancestor = ancestor->parent;
+			if (ancestor && ancestor->length == currentSet->length)
 			{
 				continue;
 			}
@@ -251,10 +201,16 @@ void Storage::mergeSwap()
 		}
 	}
 
-	if (!earlyOut)
+	if (earlyOut) // We have finised sorting as many elements are in currentSet
 	{
-		*it.left() = new StateSet {indexStart, leftSize};
-		*it.right() = new StateSet {indexStart + leftSize, rightSize};
+		finishedSorting += currentSet->length;
+	}
+	else
+	{
+		currentSet->left = (leftSize > 0) ?
+			new StateSet {indexStart, leftSize, currentSet} : nullptr;
+		currentSet->right = (rightSize > 0) ?
+			new StateSet {indexStart + leftSize, rightSize, currentSet} : nullptr;
 	}
 
 	char entryBuffer[diskSize];
@@ -278,15 +234,10 @@ void Storage::mergeSwap()
 
 bool Storage::advStateSet()
 {
-	while (tree.begin() + treeIndex != tree.end())
+	while (++currentSet != root.end())
 	{
-		treeIndex++;
-
-		StateNode it = tree.begin() + treeIndex;
-		if (*it && (*it)->length != 0)	// Next valid StateSet found
+		if (currentSet->length != 0) // Next valid StateSet found
 		{
-			StateSet* currentSet = *it;
-
 			// Seek to indexFile position from the index specified by the current StateSet
 			fseeko64(indexFile, currentSet->index, SEEK_SET);
 			for (size_t i = 0; i < swapFile.size(); i++)
@@ -302,24 +253,15 @@ bool Storage::advStateSet()
 	return false; // No next valid StateSet
 }
 
-size_t Storage::getDepth()
+size_t Storage::getSetDepth()
 {
-	size_t depth = 0;
-	size_t dividend = treeIndex;
-	while (dividend > 0)
-	{
-		dividend = (dividend - 1) / 2; // Iterate up parent nodes until we reach root
-		depth++;
-	}
-
-	return depth;
+	return currentSet.getDepth();
 }
 
 bool Storage::getNextState(uint64_t &state)
 {
-	static size_t stateCount = 0;
+	static uint64_t stateCount = 0;
 
-	StateSet* currentSet = *(tree.begin() + treeIndex);
 	if (stateCount < currentSet->length)
 	{
 		if (fread(&state, diskSize, 1, indexFile) != 1)
@@ -334,4 +276,9 @@ bool Storage::getNextState(uint64_t &state)
 	// Reset stateCount to 0 when no next state in current set remains
 	stateCount = 0;
 	return false;
+}
+
+double Storage::getSortProgress()
+{
+	return (double) finishedSorting / (double) root.length;
 }

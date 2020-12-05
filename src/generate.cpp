@@ -3,8 +3,12 @@
 #include "generate.hh"
 #include "automata.hh"
 #include "storage.hh"
+#include "utils.hh"
+#include <math.h>
 #include <stdint.h>
 #include <string>
+
+static const size_t PROGRESS_WIDTH = 50;
 
 void generate(const std::string &directory, size_t cellSize, size_t outputSize)
 {
@@ -18,6 +22,9 @@ void generate(const std::string &directory, size_t cellSize, size_t outputSize)
 		printf("Generating and sorting index file. This will take a long time.\n");
 		fflush(stdout);
 
+		double lastProgress = 0;
+		printProgressBar(PROGRESS_WIDTH, 0, false); // Print initial progress bar
+
 		// Initialize swaps
 		// This is done without reading from the index since it is empty before the first merge
 		for (uint64_t currentState = 0; currentState < files.getCellCount(); currentState++)
@@ -28,16 +35,15 @@ void generate(const std::string &directory, size_t cellSize, size_t outputSize)
 		}
 		files.mergeSwap();
 
-		size_t maxDepth = 0;
 		while (files.advStateSet())
 		{
-			size_t depth = files.getDepth();
+			size_t depth = files.getSetDepth();
 
-			if (depth > maxDepth)
+			double progress = files.getSortProgress();
+			if (progress >= lastProgress + .01) // Only update progress in increments of .01
 			{
-				printf("Sorting at depth of %zu.\n", depth);
-				fflush(stdout);
-				maxDepth = depth;
+				printProgressBar(PROGRESS_WIDTH, progress, false);
+				lastProgress = progress;
 			}
 
 			uint64_t stateID;
@@ -59,6 +65,7 @@ void generate(const std::string &directory, size_t cellSize, size_t outputSize)
 			files.mergeSwap();
 		}
 
+		printProgressBar(PROGRESS_WIDTH, 1, true); // Print final progress bar at 100%
 		printf("Finished sorting index file.\n");
 		fflush(stdout);
 	}

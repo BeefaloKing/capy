@@ -19,7 +19,7 @@ public:
 	Storage(const std::string &directory, StorageMode mode);
 	~Storage();
 
-	inline uint64_t getCellCount()
+	uint64_t getCellCount()
 	{
 		return cellCount;
 	}
@@ -36,12 +36,13 @@ public:
 	// Returns false if none exist
 	bool advStateSet();
 	// Returns the tree depth of the current StateSet
-	size_t getDepth();
+	size_t getSetDepth();
 	// Gets next state read from indexFile based on the current StateSet
 	// Returns false if there is no next state to read
 	bool getNextState(uint64_t &state);
 
-	static constexpr const char* CONFIG_NAME = "/settings.capy";
+	double getSortProgress(); // Returns progress as value between 0 and 1
+
 	static constexpr const char* SWAP_PREFIX = "/swap";
 	static constexpr const char* INDEX_NAME = "/index.capy";
 	static constexpr const char* TREE_NAME = "/tree.capy";
@@ -49,14 +50,9 @@ private:
 	// Returns true if directory is emtpy and creates it if it does not exist
 	bool validateBaseDir();
 	void openIndexFile();
-	void openTreeFile();
 
 	void openSwaps();
 	void closeSwaps();
-
-	// Reduces file fragmentation
-	// Needs filePath for more useful debug and progress output
-	void preallocateFile(FILE* file, uint64_t fileSize, const std::string &filePath = "");
 
 	std::string dirPath;
 	StorageMode mode;
@@ -65,11 +61,12 @@ private:
 	std::vector<FILE*> swapFile;
 	std::vector<uint64_t> swapSize; // Counts number of entries in each swap file
 
-	StateTree tree;
-	size_t treeIndex;
+	StateSet root;
+	StateSetIterator currentSet;
 
 	size_t cellSize;
 	uint64_t cellCount; // Must be able to hold 64 bits which may be larger than size_t
 	size_t outputSize;
 	size_t diskSize; // Size of packed data on disk in bytes
+	uint64_t finishedSorting; // Count of index entries that have been sorted
 };

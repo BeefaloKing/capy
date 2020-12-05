@@ -5,57 +5,74 @@
 #include <stdint.h>
 #include <vector>
 
-// Each set is mapped to our index array
-// This way we do not need to store the entirety of each set in each node
-struct StateSet
+class StateSet;
+class StateSetIterator;
+
+// Each StateSet is a node in an intrusive tree
+class StateSet
 {
+public:
+	StateSet();
+	StateSet(uint64_t index, uint64_t length, StateSet* parent = nullptr);
+	~StateSet();
+
+	StateSetIterator begin();
+	StateSetIterator end();
+
+	// Each set is mapped to our index array
+	// This way we do not need to store the entirety of each set in each node
 	uint64_t index;
 	uint64_t length;
+
+	// Intrusive links
+	StateSet* parent; // We need the parent link to find ancestors when mergeSwap earlies out
+	StateSet* left;
+	StateSet* right;
 };
 
-class StateTree;
-class StateNode;
-
-class StateTree
+// Used to iterate over all nodes in the tree
+class StateSetIterator
 {
 public:
-	StateTree();
-	~StateTree();
+	StateSetIterator();
+	StateSetIterator(StateSet* current);
+	~StateSetIterator() = default;
 
-	StateNode begin();
-	StateNode end();
+	StateSetIterator &operator++();
 
-	// Returns reference to node
-	StateSet* &getStates(size_t index);
-
-	inline size_t size()
+	operator StateSet*() // Implicit conversion to raw pointer
 	{
-		return nodes.size();
+		return current;
+	}
+
+	bool operator==(const StateSetIterator &other)
+	{
+		return current == other.current;
+	}
+
+	bool operator!=(const StateSetIterator &other)
+	{
+		return current != other.current;
+	}
+
+	StateSet &operator*()
+	{
+		return *current;
+	}
+
+	StateSet* operator->()
+	{
+		return current;
+	}
+
+	size_t getDepth()
+	{
+		return depth;
 	}
 private:
-	std::vector<StateSet*> nodes;
-};
+	StateSet* current;
+	size_t depth;
 
-// Iterator over nodes in StateTree
-class StateNode
-{
-public:
-	StateNode() = delete;
-	StateNode(StateTree &tree, size_t treeIndex);
-	StateNode(const StateNode &other);
-	~StateNode() = default;
-
-	StateSet* &operator*();
-	StateSet** operator->();
-	StateNode &operator+(size_t index);
-	bool operator==(const StateNode &other);
-	bool operator!=(const StateNode &other);
-	StateNode &operator=(const StateNode &other);
-
-	StateNode parent();
-	StateNode left();
-	StateNode right();
-private:
-	StateTree &tree;
-	size_t treeIndex;
+	std::vector<StateSet*> setStack;
+	std::vector<size_t> depthStack;
 };

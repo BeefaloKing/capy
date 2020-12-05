@@ -22,7 +22,7 @@ void generate(size_t cellSize)
 		double lastProgress = 0;
 		printProgressBar(PROGRESS_WIDTH, 0, false); // Print initial progress bar
 
-		do // Initial state set is the root node
+		do // Initial state has alreadt been set to the root node
 		{
 			size_t depth = files.getSetDepth();
 
@@ -62,9 +62,9 @@ void generate(size_t cellSize)
 		// Do not show when compiled in release mode.
 		// Professor never has to know :p (unless you are reading this).
 		// TLDR; Refactored and nolonger store index on disk.
-		#ifndef NDEBUG
-		files.printTreeSize();
-		#endif
+		// #ifndef NDEBUG
+		// files.printTreeSize();
+		// #endif
 	}
 	catch (const std::exception &e)
 	{

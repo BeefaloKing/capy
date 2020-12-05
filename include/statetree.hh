@@ -3,76 +3,70 @@
  */
 #pragma once
 #include <stdint.h>
-#include <vector>
+#include <queue>
 
 class StateSet;
+class StateSetQueue;
 class StateSetIterator;
 
-// Each StateSet is a node in an intrusive tree
+// Each StateSet stores a subset of all possible states
 class StateSet
 {
 public:
 	StateSet();
-	StateSet(size_t index, size_t length, StateSet* parent = nullptr);
-	~StateSet();
-
-	StateSetIterator begin();
-	StateSetIterator end();
+	StateSet(size_t index, size_t length);
+	StateSet(size_t index, size_t length, const StateSet &parent);
+	~StateSet() = default;
 
 	// Each set is mapped to our index array
 	// This way we do not need to store the entirety of each set in each node
 	size_t index;
 	size_t length;
-
-	// Intrusive links
-	StateSet* parent; // We need the parent link to find ancestors when mergeSwap earlies out
-	StateSet* left;
-	StateSet* right;
+	size_t depth;
+	size_t lastLengthChange; // Depth of the most recent ancestor with a different length
 };
 
-// Used to iterate over all nodes in the tree
-class StateSetIterator
+class StateSetQueue
 {
 public:
-	StateSetIterator();
-	StateSetIterator(StateSet* current);
-	~StateSetIterator() = default;
+	StateSetQueue() = delete;
+	StateSetQueue(size_t index, size_t length);
 
-	StateSetIterator &operator++();
+	void pushChildren(size_t leftSize, size_t rightSize);
 
-	operator StateSet*() // Implicit conversion to raw pointer
+	bool empty() const
 	{
-		return current;
+		return toVisit.empty();
 	}
 
-	bool operator==(const StateSetIterator &other)
+	const StateSet &front() const
 	{
-		return current == other.current;
+		return toVisit.front();
 	}
 
-	bool operator!=(const StateSetIterator &other)
+	void pop()
 	{
-		return current != other.current;
+		toVisit.pop();
 	}
 
-	StateSet &operator*()
+	size_t getTotalLength() const
 	{
-		return *current;
+		return totalLength;
 	}
 
-	StateSet* operator->()
+	size_t getFinishedStates() const
 	{
-		return current;
+		return finishedStates;
 	}
 
-	size_t getDepth()
+	size_t getFinishedNodes() const
 	{
-		return depth;
+		return finishedNodes;
 	}
 private:
-	StateSet* current;
-	size_t depth;
+	size_t totalLength; // Length of the root node
+	size_t finishedStates; // Count of states ignored due to early out in pushChildren
+	size_t finishedNodes; // Count of nodes ignored due to early out in pushChildren
 
-	std::vector<StateSet*> setStack;
-	std::vector<size_t> depthStack;
+	std::queue<StateSet> toVisit;
 };

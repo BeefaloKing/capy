@@ -39,7 +39,7 @@ public:
 	bool getNextState(uint64_t &state);
 
 	double getSortProgress(); // Returns progress as value between 0 and 1
-	void printTreeSize();
+	// void printTreeSize();
 
 	static constexpr const char* SWAP_PREFIX = "/swap";
 	static constexpr const char* INDEX_NAME = "/index.capy";
@@ -53,10 +53,6 @@ private:
 	size_t stateIndex;
 	std::vector<uint64_t> leftSwap;
 	std::vector<uint64_t> rightSwap;
-	// FILE* indexFile;
-	// std::vector<FILE*> swapFile;
-	// std::vector<uint64_t> swapSize; // Counts number of entries in each swap file
 
-	StateSet root;
-	StateSetIterator currentSet;
+	StateSetQueue setQueue;
 };

@@ -6,77 +6,53 @@
 StateSet::StateSet() :
 	index(0),
 	length(0),
-	parent(nullptr),
-	left(nullptr),
-	right(nullptr)
+	depth(0),
+	lastLengthChange(0)
 {}
 
-StateSet::StateSet(size_t index, size_t length, StateSet* parent) :
+StateSet::StateSet(size_t index, size_t length) :
 	index(index),
 	length(length),
-	parent(parent),
-	left(nullptr),
-	right(nullptr)
+	depth(0),
+	lastLengthChange(0)
 {}
 
-StateSet::~StateSet()
-{
-	// Recursively deletes all nodes as each child destructs
-	delete left;
-	delete right;
-}
-
-StateSetIterator StateSet::begin()
-{
-	return StateSetIterator {this};
-}
-
-StateSetIterator StateSet::end()
-{
-	return StateSetIterator {};
-}
-
-StateSetIterator::StateSetIterator() :
-	current(nullptr),
-	depth(0)
+StateSet::StateSet(size_t index, size_t length, const StateSet &parent) :
+	index(index),
+	length(length),
+	depth(parent.depth + 1),
+	lastLengthChange((parent.length == length) ? parent.lastLengthChange : parent.depth)
 {}
 
-StateSetIterator::StateSetIterator(StateSet* current) :
-	current(current),
-	depth(0)
-{}
-
-// Remember right and traverse down left
-// Goto last remembered node if left is null
-StateSetIterator &StateSetIterator::operator++()
+StateSetQueue::StateSetQueue(size_t index, size_t length) :
+	totalLength(length),
+	finishedStates(0),
+	finishedNodes(0)
 {
-	if (!current)
+	// Initialize queue with root node
+	toVisit.emplace(index, length);
+}
+
+void StateSetQueue::pushChildren(size_t leftSize, size_t rightSize)
+{
+	const StateSet &parent = toVisit.front();
+
+	// If we recieved no information from the last P bits, where P is equal to the number of
+	// states in our current set, then no further bits will provide information either.
+	if (parent.depth - parent.lastLengthChange >= parent.length)
 	{
-		throw std::out_of_range {"StateSetIterator range check"};
+		finishedStates += parent.length;
+		finishedNodes++;
+		return;
 	}
 
-	if (current->right)
+	// Only create children if they have length > 0
+	if (leftSize > 0)
 	{
-		setStack.push_back(current->right);
-		depthStack.push_back(depth + 1);
+		toVisit.emplace(parent.index, leftSize, parent);
 	}
-
-	if (current->left)
+	if (rightSize > 0)
 	{
-		current = current->left;
-		depth++;
+		toVisit.emplace(parent.index + leftSize, rightSize, parent);
 	}
-	else if (!setStack.empty())
-	{
-		current = setStack.back();
-		depth = depthStack.back();
-		setStack.pop_back();
-		depthStack.pop_back();
-	}
-	else // Nothing left
-	{
-		current = nullptr;
-	}
-
-	return *this;
 }

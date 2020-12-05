@@ -7,17 +7,12 @@
 #include <string>
 #include <vector>
 
-#include <dirent.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
 Storage::Storage(size_t cellSize) :
 	cellSize(cellSize),
 	stateCount(1ll << cellSize), // Calculates 2^cellSize
 	finishedSorting(0),
 	stateIndex(0),
-	root(StateSet {0, stateCount}), // Root node will always point to all states
-	currentSet(root.begin()) // Initialize currentSet to root
+	setQueue(0, stateCount) // Create setQueue with initial root node
 {
 	// Initialize states with all possible states between 0 and stateCount
 	for (size_t i = 0; i < stateCount; i++)
@@ -44,58 +39,18 @@ void Storage::writeSwap(uint64_t state, uint64_t output)
 
 void Storage::mergeSwap()
 {
-	size_t statesIndex = currentSet->index;
+	size_t statesIndex = setQueue.front().index;
 
 	size_t leftSize = leftSwap.size();
 	size_t rightSize = rightSwap.size();
 
-	// If one child contains no states (and the other contains the same states as the parent),
-	// then this particular bit of output does not contain any information.
-	// If we recieved no information from the last P bits, where P is equal to the number of
-	// states in our current set, then no further bits will provide information either.
-	// Effectively, we are unable to determine the state of the machine,
-	// but can determine the entire rest of the bitstream.
-	// Early out, as there is no need to continue generating nodes down this path.
-	bool earlyOut = false;
-	if (leftSize == 0 || rightSize == 0)
-	{
-		earlyOut = true;
+	setQueue.pushChildren(leftSize, rightSize);
 
-		StateSet* ancestor = currentSet;
-		for (size_t i = 0; i < currentSet->length; i++)
-		{
-			ancestor = ancestor->parent;
-			if (ancestor && ancestor->length == currentSet->length)
-			{
-				continue;
-			}
-			else
-			{
-				// We recieved information less than P bits ago
-				// It is not yet safe to early out
-				earlyOut = false;
-				break;
-			}
-		}
-	}
-
-	if (earlyOut) // We have finised sorting as many elements are in currentSet
-	{
-		finishedSorting += currentSet->length;
-	}
-	else
-	{
-		currentSet->left = (leftSize > 0) ?
-			new StateSet {statesIndex, leftSize, currentSet} : nullptr;
-		currentSet->right = (rightSize > 0) ?
-			new StateSet {statesIndex + leftSize, rightSize, currentSet} : nullptr;
-	}
-
-	for (size_t i = 0; i < leftSwap.size(); i++)
+	for (size_t i = 0; i < leftSize; i++)
 	{
 		states.at(statesIndex + i) = leftSwap.at(i);
 	}
-	for (size_t i = 0; i < rightSwap.size(); i++)
+	for (size_t i = 0; i < rightSize; i++)
 	{
 		states.at(statesIndex + leftSize + i) = rightSwap.at(i);
 	}
@@ -106,26 +61,24 @@ void Storage::mergeSwap()
 
 bool Storage::advStateSet()
 {
-	while (++currentSet != root.end())
+	setQueue.pop();
+	if (!setQueue.empty())
 	{
-		if (currentSet->length != 0) // Next valid StateSet found
-		{
-			stateIndex = currentSet->index; // Set stateIndex used by getNextState()
-			return true;
-		}
+		stateIndex = setQueue.front().index; // Reset stateIndex to index of current StateSet
+		return true;
 	}
 
-	return false; // No next valid StateSet
+	return false; // No next StateSet
 }
 
 size_t Storage::getSetDepth()
 {
-	return currentSet.getDepth();
+	return setQueue.front().depth;
 }
 
 bool Storage::getNextState(uint64_t &state)
 {
-	if (stateIndex < currentSet->index + currentSet->length)
+	if (stateIndex < setQueue.front().index + setQueue.front().length)
 	{
 		state = states.at(stateIndex);
 
@@ -138,21 +91,21 @@ bool Storage::getNextState(uint64_t &state)
 
 double Storage::getSortProgress()
 {
-	return (double) finishedSorting / (double) root.length;
+	return (double) setQueue.getFinishedStates() / (double) setQueue.getTotalLength();
 }
 
-void Storage::printTreeSize()
-{
-	auto it = root.begin();
-	uint64_t nodes = 0;
-	while (it != root.end())
-	{
-		++it;
-		nodes++;
-	}
+// void Storage::printTreeSize()
+// {
+// 	auto it = root.begin();
+// 	uint64_t nodes = 0;
+// 	while (it != root.end())
+// 	{
+// 		++it;
+// 		nodes++;
+// 	}
 
-	printf("Sorting required a tree with %llu nodes.\n", nodes);
-	printf("This required approximately %s of memory.\n",
-		getHumanSize(nodes * sizeof(StateSet)).c_str());
-	fflush(stdout);
-}
+// 	printf("Sorting required a tree with %llu nodes.\n", nodes);
+// 	printf("This required approximately %s of memory.\n",
+// 		getHumanSize(nodes * sizeof(StateSet)).c_str());
+// 	fflush(stdout);
+// }

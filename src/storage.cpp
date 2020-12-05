@@ -69,6 +69,7 @@ void Storage::openSwaps()
 	const char* fileMode = (mode == StorageMode::generate ? "w+b" : "rb");
 
 	printf("Opening swap files.\n");
+	fflush(stdout);
 
 	for (size_t i = 0; i < swapCount; i++)
 	{
@@ -99,6 +100,17 @@ void Storage::closeSwaps()
 		swapFile.pop_back();
 		swapSize.pop_back();
 	}
+
+	// Delete temporary swap files used for sorting
+	printf("Deleting swap files.\n");
+	fflush(stdout);
+
+	size_t swapCount = 1 << outputSize; // Calculates 2^outputSize
+	for (size_t i = 0; i < swapCount; i++)
+	{
+		const std::string swapPath = dirPath + SWAP_PREFIX + std::to_string(i) + ".capy";
+		remove(swapPath.c_str()); // We don't really care if this fails
+	}
 }
 
 void Storage::openIndexFile()
@@ -106,6 +118,7 @@ void Storage::openIndexFile()
 	const char* fileMode = (mode == StorageMode::generate ? "w+b" : "rb");
 
 	printf("Opening index file.\n");
+	fflush(stdout);
 
 	const std::string indexPath = dirPath + INDEX_NAME;
 	indexFile = fopen(indexPath.c_str(), fileMode);
@@ -126,6 +139,7 @@ void Storage::openTreeFile()
 	const char* fileMode = (mode == StorageMode::generate ? "w+b" : "rb");
 
 	printf("Opening tree file.\n");
+	fflush(stdout);
 
 	const std::string treePath = dirPath + TREE_NAME;
 	treeFile = fopen(treePath.c_str(), fileMode);
@@ -143,6 +157,7 @@ void Storage::setConfig(size_t cellSize, size_t outputSize)
 	diskSize = (cellSize + 7) / 8; // Always round up instead of down
 
 	printf("Writing configuration to disk.\n");
+	fflush(stdout);
 
 	const std::string configPath = dirPath + CONFIG_NAME;
 	FILE* configFile = fopen(configPath.c_str(), "w");
@@ -174,6 +189,7 @@ void Storage::preallocateFile(FILE* file, uint64_t fileSize, const std::string &
 {
 	// TODO: Human readable sizes
 	printf("Preallocating %llu bytes for %s.\n", fileSize, filePath.c_str());
+	fflush(stdout);
 
 	if (fseeko64(file, fileSize - 1, SEEK_SET) != 0)
 	{

@@ -4,38 +4,25 @@
 #include "automata.hh"
 #include "storage.hh"
 #include "utils.hh"
-#include <math.h>
 #include <stdint.h>
 #include <string>
 
 static const size_t PROGRESS_WIDTH = 50;
 
-void generate(const std::string &directory, size_t cellSize, size_t outputSize)
+void generate(size_t cellSize)
 {
+	Storage files {cellSize};
+	Automata ca {cellSize};
+
 	try
 	{
-		Storage files {directory, StorageMode::generate};
-		files.setConfig(cellSize, outputSize);
-
-		Automata ca {cellSize, outputSize};
-
-		printf("Generating and sorting index file. This will take a long time.\n");
+		printf("Generating and sorting index. This will take a long time.\n");
 		fflush(stdout);
 
 		double lastProgress = 0;
 		printProgressBar(PROGRESS_WIDTH, 0, false); // Print initial progress bar
 
-		// Initialize swaps
-		// This is done without reading from the index since it is empty before the first merge
-		for (uint64_t currentState = 0; currentState < files.getCellCount(); currentState++)
-		{
-			ca.initState(currentState);
-
-			files.writeSwap(currentState, ca.getOutput());
-		}
-		files.mergeSwap();
-
-		while (files.advStateSet())
+		do // Initial state set is the root node
 		{
 			size_t depth = files.getSetDepth();
 
@@ -64,21 +51,23 @@ void generate(const std::string &directory, size_t cellSize, size_t outputSize)
 
 			files.mergeSwap();
 		}
+		while (files.advStateSet());
 
 		printProgressBar(PROGRESS_WIDTH, 1, true); // Print final progress bar at 100%
-		printf("Finished sorting index file.\n");
+		printf("Finished sorting index.\n");
 		fflush(stdout);
 
 		// Tree requires far more space than index, but tree is stored in ram.
 		// This reveals a fundamental design flaw, but is important information.
 		// Do not show when compiled in release mode.
-		// Professor never has to know :p
+		// Professor never has to know :p (unless you are reading this).
+		// TLDR; Refactored and nolonger store index on disk.
 		#ifndef NDEBUG
 		files.printTreeSize();
 		#endif
 	}
 	catch (const std::exception &e)
 	{
-		printf("Unable to generate output!\n%s", e.what());
+		printf("Unable to generate index!\n%s", e.what());
 	}
 }

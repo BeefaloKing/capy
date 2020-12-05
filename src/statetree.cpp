@@ -11,7 +11,7 @@ StateSet::StateSet() :
 	right(nullptr)
 {}
 
-StateSet::StateSet(uint64_t index, uint64_t length, StateSet* parent) :
+StateSet::StateSet(size_t index, size_t length, StateSet* parent) :
 	index(index),
 	length(length),
 	parent(parent),

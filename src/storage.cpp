@@ -5,171 +5,49 @@
 #include "utils.hh"
 #include <stdio.h>
 #include <string>
-#include <string.h>
 #include <vector>
 
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-Storage::Storage(const std::string &directory, StorageMode mode) :
-	dirPath(directory),
-	mode(mode),
-	indexFile(nullptr),
-	treeFile(nullptr),
-	cellSize(0),
-	outputSize(0),
-	diskSize(0),
-	finishedSorting(0)
+Storage::Storage(size_t cellSize) :
+	cellSize(cellSize),
+	stateCount(1ll << cellSize), // Calculates 2^cellSize
+	finishedSorting(0),
+	stateIndex(0),
+	root(StateSet {0, stateCount}), // Root node will always point to all states
+	currentSet(root.begin()) // Initialize currentSet to root
 {
-	bool isEmpty = validateBaseDir();
-	if ((mode == StorageMode::generate) && !isEmpty) // Generate must start with an empty directory
+	// Initialize states with all possible states between 0 and stateCount
+	for (size_t i = 0; i < stateCount; i++)
 	{
-		throwDirFull(directory);
+		states.push_back(i);
 	}
-}
-
-Storage::~Storage()
-{
-	closeSwaps();
-	fclose(indexFile);
-	fclose(treeFile);
-}
-
-bool Storage::validateBaseDir()
-{
-	struct stat dirStat = {};
-	if (stat(dirPath.c_str(), &dirStat) == -1) // Directory does not exist
-	{
-		if (mkdir(dirPath.c_str()) == -1) // Look at my ugly nonportable code!
-		{
-			throwDirCreate(dirPath);
-		}
-	}
-
-	bool isEmpty = true;
-	DIR* baseDir = opendir(dirPath.c_str());
-	dirent* entry;
-
-	while ((entry = readdir(baseDir)) != nullptr)
-	{
-		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-		{
-			continue; // Skip self and parent entires "." and ".."
-		}
-		isEmpty = false;
-		break;
-	}
-
-	closedir(baseDir);
-	return isEmpty;
-}
-
-void Storage::openSwaps()
-{
-	size_t swapCount = 1 << outputSize; // Calculates 2^outputSize
-	const char* fileMode = (mode == StorageMode::generate ? "w+b" : "rb");
-
-	printf("Opening swap files.\n");
-	fflush(stdout);
-
-	for (size_t i = 0; i < swapCount; i++)
-	{
-		const std::string swapPath = dirPath + SWAP_PREFIX + std::to_string(i) + ".capy";
-		FILE* swap = fopen(swapPath.c_str(), fileMode);
-		if (swap == nullptr)
-		{
-			throwFileAccess(swapPath);
-		}
-
-		if (mode == StorageMode::generate)
-		{
-			// Number of cells * size of each cell / number of indexes
-			uint64_t fileSize = (cellCount * diskSize) / swapCount;
-			preallocateFile(swap, fileSize, swapPath);
-		}
-
-		swapFile.push_back(swap);
-		swapSize.push_back(0); // Initialize count of entries in each swap file to 0
-	}
-}
-
-void Storage::closeSwaps()
-{
-	while (!swapFile.empty())
-	{
-		fclose(swapFile.back());
-		swapFile.pop_back();
-		swapSize.pop_back();
-	}
-
-	// Delete temporary swap files used for sorting
-	printf("Deleting swap files.\n");
-	fflush(stdout);
-
-	size_t swapCount = 1 << outputSize; // Calculates 2^outputSize
-	for (size_t i = 0; i < swapCount; i++)
-	{
-		const std::string swapPath = dirPath + SWAP_PREFIX + std::to_string(i) + ".capy";
-		remove(swapPath.c_str()); // We don't really care if this fails
-	}
-}
-
-void Storage::openIndexFile()
-{
-	const char* fileMode = (mode == StorageMode::generate ? "w+b" : "rb");
-
-	printf("Opening index file.\n");
-	fflush(stdout);
-
-	const std::string indexPath = dirPath + INDEX_NAME;
-	indexFile = fopen(indexPath.c_str(), fileMode);
-	if (indexFile == nullptr)
-	{
-		throwFileAccess(indexPath);
-	}
-
-	if (mode == StorageMode::generate)
-	{
-		uint64_t fileSize = cellCount * diskSize;
-		preallocateFile(indexFile, fileSize, indexPath);
-	}
-}
-
-void Storage::setConfig(size_t cellSize, size_t outputSize)
-{
-	this->cellSize = cellSize;
-	cellCount = 1ll << cellSize; // Calculates 2^cellSize
-	this->outputSize = outputSize;
-	diskSize = (cellSize + 7) / 8; // Always round up instead of down
-
-	// Root node will always point to the entirety of the index array
-	root = StateSet {0, cellCount};
-	// Initialize currentSet to root
-	currentSet = root.begin();
-
-	openSwaps();
-	openIndexFile();
 }
 
 void Storage::writeSwap(uint64_t state, uint64_t output)
 {
 	// Also relies on little endian architecture
-	if (fwrite(&state, diskSize, 1, swapFile.at(output)) != 1)
+	switch (output)
 	{
-		throwFileWrite(SWAP_PREFIX);
+		case 0:
+			leftSwap.push_back(state);
+			break;
+		case 1:
+			rightSwap.push_back(state);
+			break;
+		default:
+			throwRange("Writing swap entry", 2, output); // Multibit outputs have been deprecated
 	}
-	swapSize.at(output)++;
 }
 
 void Storage::mergeSwap()
 {
-	uint64_t indexStart = currentSet->index;
-	fseeko64(indexFile, indexStart, SEEK_SET); // Seek to index position pointed to by tree data
+	size_t statesIndex = currentSet->index;
 
-	// Here is where we killed the idea of having more than 1 bit of output at a time
-	uint64_t leftSize = swapSize.at(0);
-	uint64_t rightSize = swapSize.at(1);
+	size_t leftSize = leftSwap.size();
+	size_t rightSize = rightSwap.size();
 
 	// If one child contains no states (and the other contains the same states as the parent),
 	// then this particular bit of output does not contain any information.
@@ -184,7 +62,7 @@ void Storage::mergeSwap()
 		earlyOut = true;
 
 		StateSet* ancestor = currentSet;
-		for (uint64_t i = 0; i < currentSet->length; i++)
+		for (size_t i = 0; i < currentSet->length; i++)
 		{
 			ancestor = ancestor->parent;
 			if (ancestor && ancestor->length == currentSet->length)
@@ -208,28 +86,22 @@ void Storage::mergeSwap()
 	else
 	{
 		currentSet->left = (leftSize > 0) ?
-			new StateSet {indexStart, leftSize, currentSet} : nullptr;
+			new StateSet {statesIndex, leftSize, currentSet} : nullptr;
 		currentSet->right = (rightSize > 0) ?
-			new StateSet {indexStart + leftSize, rightSize, currentSet} : nullptr;
+			new StateSet {statesIndex + leftSize, rightSize, currentSet} : nullptr;
 	}
 
-	char entryBuffer[diskSize];
-	for (size_t i = 0; i < swapSize.size(); i++)
+	for (size_t i = 0; i < leftSwap.size(); i++)
 	{
-		fseeko64(swapFile.at(i), 0, SEEK_SET); // Return to begining of each swap file
-		for (uint64_t j = 0; j < swapSize.at(i); j++)
-		{
-			if (fread(entryBuffer, diskSize, 1, swapFile.at(i)) != 1)
-			{
-				throwFileRead(SWAP_PREFIX);
-			}
-
-			if (fwrite(entryBuffer, sizeof(entryBuffer), 1, indexFile) != 1)
-			{
-				throwFileWrite(INDEX_NAME);
-			}
-		}
+		states.at(statesIndex + i) = leftSwap.at(i);
 	}
+	for (size_t i = 0; i < rightSwap.size(); i++)
+	{
+		states.at(statesIndex + leftSize + i) = rightSwap.at(i);
+	}
+
+	leftSwap.clear();
+	rightSwap.clear();
 }
 
 bool Storage::advStateSet()
@@ -238,14 +110,7 @@ bool Storage::advStateSet()
 	{
 		if (currentSet->length != 0) // Next valid StateSet found
 		{
-			// Seek to indexFile position from the index specified by the current StateSet
-			fseeko64(indexFile, currentSet->index, SEEK_SET);
-			for (size_t i = 0; i < swapFile.size(); i++)
-			{
-				rewind(swapFile.at(i)); // Seek to begining of each swap file
-				swapSize.at(i) = 0; // Reset count of swap entries to 0
-			}
-
+			stateIndex = currentSet->index; // Set stateIndex used by getNextState()
 			return true;
 		}
 	}
@@ -260,21 +125,14 @@ size_t Storage::getSetDepth()
 
 bool Storage::getNextState(uint64_t &state)
 {
-	static uint64_t stateCount = 0;
-
-	if (stateCount < currentSet->length)
+	if (stateIndex < currentSet->index + currentSet->length)
 	{
-		if (fread(&state, diskSize, 1, indexFile) != 1)
-		{
-			throwFileRead(INDEX_NAME);
-		}
+		state = states.at(stateIndex);
 
-		stateCount++;
+		stateIndex++;
 		return true;
 	}
 
-	// Reset stateCount to 0 when no next state in current set remains
-	stateCount = 0;
 	return false;
 }
 

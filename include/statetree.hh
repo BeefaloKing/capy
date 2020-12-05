@@ -13,7 +13,7 @@ class StateSet
 {
 public:
 	StateSet();
-	StateSet(uint64_t index, uint64_t length, StateSet* parent = nullptr);
+	StateSet(size_t index, size_t length, StateSet* parent = nullptr);
 	~StateSet();
 
 	StateSetIterator begin();
@@ -21,8 +21,8 @@ public:
 
 	// Each set is mapped to our index array
 	// This way we do not need to store the entirety of each set in each node
-	uint64_t index;
-	uint64_t length;
+	size_t index;
+	size_t length;
 
 	// Intrusive links
 	StateSet* parent; // We need the parent link to find ancestors when mergeSwap earlies out

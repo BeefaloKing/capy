@@ -7,7 +7,7 @@ class Automata
 {
 public:
 	Automata() = delete;
-	Automata(size_t cellSize, size_t outputSize);
+	Automata(size_t cellSize, size_t outputSize = 1); // Multibit output is deprecated
 	~Automata();
 
 	void initState(uint64_t stateID);

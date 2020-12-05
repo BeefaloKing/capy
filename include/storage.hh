@@ -16,16 +16,13 @@ class Storage
 {
 public:
 	Storage() = delete;
-	Storage(const std::string &directory, StorageMode mode);
-	~Storage();
+	Storage(size_t cellSize);
+	~Storage() = default;
 
-	uint64_t getCellCount()
+	size_t getStateCount()
 	{
-		return cellCount;
+		return stateCount;
 	}
-
-	void setConfig(size_t cellSize, size_t outputSize);
-	// void readConfig();
 
 	void writeSwap(uint64_t state, uint64_t output);
 	// void getIndex(uint64_t output, std::vector<uint64_t> states);
@@ -48,26 +45,18 @@ public:
 	static constexpr const char* INDEX_NAME = "/index.capy";
 	static constexpr const char* TREE_NAME = "/tree.capy";
 private:
-	// Returns true if directory is emtpy and creates it if it does not exist
-	bool validateBaseDir();
-	void openIndexFile();
+	size_t cellSize;
+	size_t stateCount;
+	size_t finishedSorting; // Count of index entries that have been sorted
 
-	void openSwaps();
-	void closeSwaps();
-
-	std::string dirPath;
-	StorageMode mode;
-	FILE* indexFile;
-	FILE* treeFile;
-	std::vector<FILE*> swapFile;
-	std::vector<uint64_t> swapSize; // Counts number of entries in each swap file
+	std::vector<uint64_t> states; // Sorted array of all possible automata states
+	size_t stateIndex;
+	std::vector<uint64_t> leftSwap;
+	std::vector<uint64_t> rightSwap;
+	// FILE* indexFile;
+	// std::vector<FILE*> swapFile;
+	// std::vector<uint64_t> swapSize; // Counts number of entries in each swap file
 
 	StateSet root;
 	StateSetIterator currentSet;
-
-	size_t cellSize;
-	uint64_t cellCount; // Must be able to hold 64 bits which may be larger than size_t
-	size_t outputSize;
-	size_t diskSize; // Size of packed data on disk in bytes
-	uint64_t finishedSorting; // Count of index entries that have been sorted
 };

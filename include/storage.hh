@@ -61,6 +61,11 @@ public:
 	{
 		return setQueue.getLostStates();
 	}
+
+	size_t getLostEntropy() const
+	{
+		return setQueue.getLostEntropy();
+	}
 private:
 	size_t cellSize;
 	size_t stateCount;

@@ -63,10 +63,16 @@ public:
 	{
 		return lostNodes;
 	}
+
+	size_t getLostEntropy() const
+	{
+		return lostEntropy;
+	}
 private:
 	size_t totalLength; // Length of the root node
 	size_t lostStates; // Count of states ignored due to early out in pushChildren
 	size_t lostNodes; // Count of nodes ignored due to early out in pushChildren
+	size_t lostEntropy; // Count of entropy lost to inefficiency of internal machine
 
 	std::queue<StateSet> toVisit;
 };

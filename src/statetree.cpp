@@ -27,7 +27,8 @@ StateSet::StateSet(size_t index, size_t length, const StateSet &parent) :
 StateSetQueue::StateSetQueue(size_t index, size_t length) :
 	totalLength(length),
 	lostStates(0),
-	lostNodes(0)
+	lostNodes(0),
+	lostEntropy(0)
 {
 	// Initialize queue with root node
 	toVisit.emplace(index, length);
@@ -42,6 +43,7 @@ void StateSetQueue::pushChildren(size_t leftSize, size_t rightSize)
 	if (parent.depth - parent.lastLengthChange >= parent.length)
 	{
 		lostStates += parent.length;
+		lostEntropy += parent.length - 1;
 		lostNodes++;
 		return;
 	}

@@ -2,22 +2,38 @@
  */
 #include "capy.hh"
 #include "automata.hh"
+#include "error.hh"
 #include "storage.hh"
 #include "utils.hh"
 #include <stdint.h>
-#include <string>
+#include <stdio.h>
 
 static const size_t PROGRESS_WIDTH = 50;
 
-Capy::Capy(size_t cellSize, size_t outputBit) :
+Capy::Capy(size_t cellSize, size_t outputBit, const std::string &outPath) :
+	outFile(fopen(outPath.c_str(), "w")),
 	data(cellSize),
 	ca(cellSize, outputBit)
-{}
-
-// TODO: Output data in some format excel and/or matlab can handle
-void Capy::makeRecord(size_t depth, size_t depthSum, size_t nodesSeen)
 {
+	if (outFile == nullptr)
+	{
+		throwFileAccess(outPath);
+	}
 
+	printf("Storing analysis in %s.\n", outPath.c_str());
+	fflush(stdout);
+
+	makeRecordHeader();
+}
+
+void Capy::makeRecordHeader()
+{
+	fprintf(outFile, "bitstream_size,distinct_bitstreams,distinct_states\n");
+}
+
+void Capy::makeRecord(size_t depth, size_t nodesSeen, size_t depthSum)
+{
+	fprintf(outFile, "%zu,%zu,%zu\n", depth, nodesSeen, depthSum);
 }
 
 void Capy::mainLoop()
@@ -39,9 +55,12 @@ void Capy::mainLoop()
 			// Reset counters after reaching a new tree depth
 			if (depth > maxDepth)
 			{
-				makeRecord(maxDepth, depthSum, nodesSeen);
+				// Subtract lost entropy from depthSum before making record
+				depthSum -= data.getLostEntropy();
+				makeRecord(maxDepth, nodesSeen, depthSum);
 
 				// Reset accumulators to include information from lost nodes
+				// depthSum = data.getLostStates();
 				depthSum = data.getLostStates();
 				nodesSeen = data.getLostNodes();
 				maxDepth = depth;
@@ -82,7 +101,8 @@ void Capy::mainLoop()
 		fflush(stdout);
 
 		// Make a final record to capture bottom most tree depth
-		makeRecord(maxDepth, depthSum, nodesSeen);
+		depthSum -= data.getLostEntropy();
+		makeRecord(maxDepth, nodesSeen, depthSum);
 
 		// Tree requires far more space than index, but tree is stored in ram.
 		// This reveals a fundamental design flaw, but is important information.

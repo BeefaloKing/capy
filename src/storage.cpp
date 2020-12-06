@@ -10,7 +10,6 @@
 Storage::Storage(size_t cellSize) :
 	cellSize(cellSize),
 	stateCount(1ll << cellSize), // Calculates 2^cellSize
-	finishedSorting(0),
 	stateIndex(0),
 	setQueue(0, stateCount) // Create setQueue with initial root node
 {
@@ -23,7 +22,6 @@ Storage::Storage(size_t cellSize) :
 
 void Storage::writeSwap(uint64_t state, uint64_t output)
 {
-	// Also relies on little endian architecture
 	switch (output)
 	{
 		case 0:
@@ -71,11 +69,6 @@ bool Storage::advStateSet()
 	return false; // No next StateSet
 }
 
-size_t Storage::getSetDepth()
-{
-	return setQueue.front().depth;
-}
-
 bool Storage::getNextState(uint64_t &state)
 {
 	if (stateIndex < setQueue.front().index + setQueue.front().length)
@@ -91,7 +84,7 @@ bool Storage::getNextState(uint64_t &state)
 
 double Storage::getSortProgress()
 {
-	return (double) setQueue.getFinishedStates() / (double) setQueue.getTotalLength();
+	return (double) setQueue.getLostStates() / (double) setQueue.getTotalLength();
 }
 
 // void Storage::printTreeSize()
@@ -103,7 +96,7 @@ double Storage::getSortProgress()
 // 		++it;
 // 		nodes++;
 // 	}
-
+//
 // 	printf("Sorting required a tree with %llu nodes.\n", nodes);
 // 	printf("This required approximately %s of memory.\n",
 // 		getHumanSize(nodes * sizeof(StateSet)).c_str());

@@ -1,6 +1,6 @@
-/* generate.cpp
+/* capy.cpp
  */
-#include "generate.hh"
+#include "capy.hh"
 #include "automata.hh"
 #include "storage.hh"
 #include "utils.hh"
@@ -9,24 +9,48 @@
 
 static const size_t PROGRESS_WIDTH = 50;
 
-void generate(size_t cellSize)
-{
-	Storage files {cellSize};
-	Automata ca {cellSize};
+Capy::Capy(size_t cellSize, size_t outputBit) :
+	data(cellSize),
+	ca(cellSize, outputBit)
+{}
 
+// TODO: Output data in some format excel and/or matlab can handle
+void Capy::makeRecord(size_t depth, size_t depthSum, size_t nodesSeen)
+{
+
+}
+
+void Capy::mainLoop()
+{
 	try
 	{
 		printf("Generating and sorting index. This will take a long time.\n");
 		fflush(stdout);
 
-		double lastProgress = 0;
-		printProgressBar(PROGRESS_WIDTH, 0, false); // Print initial progress bar
+		size_t depthSum = 0;
+		size_t nodesSeen = 0;
+		size_t maxDepth = 0;
 
+		double lastProgress = -1; // Guarantee progress bar is printed at 0%
 		do // Initial state has alreadt been set to the root node
 		{
-			size_t depth = files.getSetDepth();
+			size_t depth = data.getSetDepth();
 
-			double progress = files.getSortProgress();
+			// Reset counters after reaching a new tree depth
+			if (depth > maxDepth)
+			{
+				makeRecord(maxDepth, depthSum, nodesSeen);
+
+				// Reset accumulators to include information from lost nodes
+				depthSum = data.getLostStates();
+				nodesSeen = data.getLostNodes();
+				maxDepth = depth;
+			}
+
+			nodesSeen++;
+			depthSum += data.getSetLength();
+
+			double progress = data.getSortProgress();
 			if (progress >= lastProgress + .01) // Only update progress in increments of .01
 			{
 				printProgressBar(PROGRESS_WIDTH, progress, false);
@@ -34,7 +58,7 @@ void generate(size_t cellSize)
 			}
 
 			uint64_t stateID;
-			while (files.getNextState(stateID))
+			while (data.getNextState(stateID))
 			{
 				ca.initState(stateID);
 
@@ -46,16 +70,19 @@ void generate(size_t cellSize)
 					ca.advanceState();
 				}
 
-				files.writeSwap(stateID, ca.getOutput());
+				data.writeSwap(stateID, ca.getOutput());
 			}
 
-			files.mergeSwap();
+			data.mergeSwap();
 		}
-		while (files.advStateSet());
+		while (data.advStateSet());
 
 		printProgressBar(PROGRESS_WIDTH, 1, true); // Print final progress bar at 100%
 		printf("Finished sorting index.\n");
 		fflush(stdout);
+
+		// Make a final record to capture bottom most tree depth
+		makeRecord(maxDepth, depthSum, nodesSeen);
 
 		// Tree requires far more space than index, but tree is stored in ram.
 		// This reveals a fundamental design flaw, but is important information.
@@ -68,6 +95,6 @@ void generate(size_t cellSize)
 	}
 	catch (const std::exception &e)
 	{
-		printf("Unable to generate index!\n%s", e.what());
+		printf("Unable to generate output!\n%s", e.what());
 	}
 }

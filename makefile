@@ -2,7 +2,7 @@
 BIN = capy.exe
 
 # List of source files to be compiled
-FILES = main.cpp automata.cpp bitmap.cpp error.cpp generate.cpp statetree.cpp storage.cpp\
+FILES = main.cpp automata.cpp bitmap.cpp capy.cpp error.cpp statetree.cpp storage.cpp\
 	utils.cpp
 
 # Compiler to use

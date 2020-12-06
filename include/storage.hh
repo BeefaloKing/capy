@@ -32,8 +32,7 @@ public:
 	// Finds the next non-null and non-empty StateSet
 	// Returns false if none exist
 	bool advStateSet();
-	// Returns the tree depth of the current StateSet
-	size_t getSetDepth();
+
 	// Gets next state read from indexFile based on the current StateSet
 	// Returns false if there is no next state to read
 	bool getNextState(uint64_t &state);
@@ -41,13 +40,30 @@ public:
 	double getSortProgress(); // Returns progress as value between 0 and 1
 	// void printTreeSize();
 
-	static constexpr const char* SWAP_PREFIX = "/swap";
-	static constexpr const char* INDEX_NAME = "/index.capy";
-	static constexpr const char* TREE_NAME = "/tree.capy";
+	// Returns the tree depth of the current StateSet
+	size_t getSetDepth() const
+	{
+		return setQueue.front().depth;
+	}
+
+	// Returns the size of the current StateSet
+	size_t getSetLength() const
+	{
+		return setQueue.front().length;
+	}
+
+	size_t getLostNodes() const
+	{
+		return setQueue.getLostNodes();
+	}
+
+	size_t getLostStates() const
+	{
+		return setQueue.getLostStates();
+	}
 private:
 	size_t cellSize;
 	size_t stateCount;
-	size_t finishedSorting; // Count of index entries that have been sorted
 
 	std::vector<uint64_t> states; // Sorted array of all possible automata states
 	size_t stateIndex;

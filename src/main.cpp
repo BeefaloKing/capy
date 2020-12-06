@@ -1,6 +1,6 @@
 /* main.cpp
  */
-#include "generate.hh"
+#include "capy.hh"
 
 int main (int argc, char* argv[])
 {

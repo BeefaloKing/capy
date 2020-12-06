@@ -54,19 +54,19 @@ public:
 		return totalLength;
 	}
 
-	size_t getFinishedStates() const
+	size_t getLostStates() const
 	{
-		return finishedStates;
+		return lostStates;
 	}
 
-	size_t getFinishedNodes() const
+	size_t getLostNodes() const
 	{
-		return finishedNodes;
+		return lostNodes;
 	}
 private:
 	size_t totalLength; // Length of the root node
-	size_t finishedStates; // Count of states ignored due to early out in pushChildren
-	size_t finishedNodes; // Count of nodes ignored due to early out in pushChildren
+	size_t lostStates; // Count of states ignored due to early out in pushChildren
+	size_t lostNodes; // Count of nodes ignored due to early out in pushChildren
 
 	std::queue<StateSet> toVisit;
 };

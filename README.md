@@ -28,4 +28,5 @@ Analyze Mode:
 
 # TODO
 
-- Remove generate module.
+- Better progress.
+- Output data records.

@@ -39,7 +39,6 @@ public:
 	// Returns false if there is no next state to read
 	bool getNextState(uint64_t &state);
 
-	double getSortProgress(); // Returns progress as value between 0 and 1
 	// void printTreeSize();
 
 	// Returns the tree depth of the current StateSet

@@ -83,11 +83,6 @@ bool Storage::getNextState(uint64_t &state)
 	return false;
 }
 
-double Storage::getSortProgress()
-{
-	return (double) setQueue.getLostStates() / (double) setQueue.getTotalLength();
-}
-
 // void Storage::printTreeSize()
 // {
 // 	auto it = root.begin();

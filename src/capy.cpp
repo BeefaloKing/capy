@@ -5,6 +5,7 @@
 #include "error.hh"
 #include "storage.hh"
 #include "utils.hh"
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -44,8 +45,11 @@ void Capy::mainLoop()
 	size_t depthSum = 0;
 	size_t nodesSeen = 0;
 	size_t maxDepth = 0;
+	size_t maxSum = 0; // Used for progress
 
-	double lastProgress = -1; // Guarantee progress bar is printed at 0%
+	// Print initial progress bar
+	printProgressBar(PROGRESS_WIDTH, 0, false);
+
 	do // Initial state has alreadt been set to the root node
 	{
 		size_t depth = data.getSetDepth();
@@ -57,6 +61,11 @@ void Capy::mainLoop()
 			depthSum -= data.getLostEntropy();
 			makeRecord(maxDepth, nodesSeen, depthSum);
 
+			maxSum = std::max(maxSum, depthSum);
+			double probProg = log2(nodesSeen) / log2(depthSum); // This just felt right
+			double stateProg = (maxSum - depthSum) / (double) maxSum;
+			printProgressBar(PROGRESS_WIDTH, std::max(probProg, stateProg), false);
+
 			// Reset accumulators to include information from lost nodes
 			// depthSum = data.getLostStates();
 			depthSum = data.getLostStates();
@@ -66,13 +75,6 @@ void Capy::mainLoop()
 
 		nodesSeen++;
 		depthSum += data.getSetLength();
-
-		double progress = data.getSortProgress();
-		if (progress >= lastProgress + .01) // Only update progress in increments of .01
-		{
-			printProgressBar(PROGRESS_WIDTH, progress, false);
-			lastProgress = progress;
-		}
 
 		uint64_t stateID;
 		while (data.getNextState(stateID))

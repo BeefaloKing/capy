@@ -2,17 +2,18 @@
  * Binary tree for storing sets of states
  */
 #pragma once
+#include "automata.hh"
+#include <set>
 #include <stdint.h>
 #include <queue>
 
-class StateSet;
+struct StateSet;
 class StateSetQueue;
 class StateSetIterator;
 
 // Each StateSet stores a subset of all possible states
-class StateSet
+struct StateSet
 {
-public:
 	StateSet();
 	StateSet(size_t index, size_t length);
 	StateSet(size_t index, size_t length, const StateSet &parent);
@@ -23,16 +24,15 @@ public:
 	size_t index;
 	size_t length;
 	size_t depth;
-	size_t lastLengthChange; // Depth of the most recent ancestor with a different length
 };
 
 class StateSetQueue
 {
 public:
 	StateSetQueue() = delete;
-	StateSetQueue(size_t index, size_t length);
+	StateSetQueue(size_t index, size_t length, Automata &ca);
 
-	void pushChildren(size_t leftSize, size_t rightSize);
+	void pushChildren(const std::set<uint64_t> &leftSwap, const std::set<uint64_t> &rightSwap);
 
 	bool empty() const
 	{
@@ -75,4 +75,5 @@ private:
 	size_t lostEntropy; // Count of entropy lost to inefficiency of internal machine
 
 	std::queue<StateSet> toVisit;
+	Automata &ca;
 };

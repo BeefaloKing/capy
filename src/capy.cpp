@@ -12,8 +12,8 @@ static const size_t PROGRESS_WIDTH = 50;
 
 Capy::Capy(size_t cellSize, size_t outputBit, const std::string &outPath) :
 	outFile(fopen(outPath.c_str(), "w")),
-	data(cellSize),
-	ca(cellSize, outputBit)
+	ca(cellSize, outputBit),
+	data(cellSize, ca)
 {
 	if (outFile == nullptr)
 	{
@@ -79,15 +79,10 @@ void Capy::mainLoop()
 		{
 			ca.initState(stateID);
 
-			// We read from the index initial states
-			// The depth of the tree represents the size of the walk
-			// We need to advance state by the size of the walk to get the nth bit of output
-			for (size_t i = 0; i < depth; i++)
-			{
-				ca.advanceState();
-			}
+			uint64_t output = ca.getOutput();
+			uint64_t nextState = ca.advanceState();
 
-			data.writeSwap(stateID, ca.getOutput());
+			data.writeSwap(nextState, output);
 		}
 
 		data.mergeSwap();

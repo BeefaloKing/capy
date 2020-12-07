@@ -12,6 +12,7 @@ int main (int argc, char* argv[])
 	if (argc == 1) // Print ussage when no arguments passed
 	{
 		printUsage();
+		return 0;
 	}
 
 	opterr = 0; // Ignore default error printing behavior

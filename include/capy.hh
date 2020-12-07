@@ -18,7 +18,7 @@ private:
 	void makeRecordHeader();
 	void makeRecord(size_t depth, size_t nodesSeen, size_t depthSum);
 
-	FILE* outFile; // Stores output records
-	Storage data;
+	FILE* outFile; // Stores output record
 	Automata ca;
+	Storage data;
 };

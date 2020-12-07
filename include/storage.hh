@@ -2,7 +2,9 @@
  * Used for reading and writing to the stored state/output mapping
  */
 #pragma once
+#include "automata.hh"
 #include "statetree.hh"
+#include <set>
 #include <string>
 #include <vector>
 
@@ -16,7 +18,7 @@ class Storage
 {
 public:
 	Storage() = delete;
-	Storage(size_t cellSize);
+	Storage(size_t cellSize, Automata &ca); // StateSetQueue an Automata reference
 	~Storage() = default;
 
 	size_t getStateCount()
@@ -70,10 +72,10 @@ private:
 	size_t cellSize;
 	size_t stateCount;
 
-	std::vector<uint64_t> states; // Sorted array of all possible automata states
+	std::vector<uint64_t> states; // Master list of automata states
 	size_t stateIndex;
-	std::vector<uint64_t> leftSwap;
-	std::vector<uint64_t> rightSwap;
+	std::set<uint64_t> leftSwap;
+	std::set<uint64_t> rightSwap;
 
 	StateSetQueue setQueue;
 };

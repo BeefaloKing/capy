@@ -7,11 +7,11 @@
 #include <string>
 #include <vector>
 
-Storage::Storage(size_t cellSize) :
+Storage::Storage(size_t cellSize, Automata &ca) :
 	cellSize(cellSize),
 	stateCount(1ll << cellSize), // Calculates 2^cellSize
 	stateIndex(0),
-	setQueue(0, stateCount) // Create setQueue with initial root node
+	setQueue(0, stateCount, ca) // Create setQueue with initial root node
 {
 	// Initialize states with all possible states between 0 and stateCount
 	for (size_t i = 0; i < stateCount; i++)
@@ -22,35 +22,36 @@ Storage::Storage(size_t cellSize) :
 
 void Storage::writeSwap(uint64_t state, uint64_t output)
 {
+	std::set<uint64_t>* swap = nullptr;
 	switch (output)
 	{
 		case 0:
-			leftSwap.push_back(state);
+			swap = &leftSwap;
 			break;
 		case 1:
-			rightSwap.push_back(state);
+			swap = &rightSwap;
 			break;
 		default:
 			throwRange("Writing swap entry", 2, output); // Multibit outputs have been deprecated
 	}
+
+	swap->insert(state);
 }
 
 void Storage::mergeSwap()
 {
-	size_t statesIndex = setQueue.front().index;
+	setQueue.pushChildren(leftSwap, rightSwap);
 
-	size_t leftSize = leftSwap.size();
-	size_t rightSize = rightSwap.size();
-
-	setQueue.pushChildren(leftSize, rightSize);
-
-	for (size_t i = 0; i < leftSize; i++)
+	auto statesIt = states.begin() + setQueue.front().index;
+	for (const uint64_t &entry : leftSwap)
 	{
-		states.at(statesIndex + i) = leftSwap.at(i);
+		*statesIt = entry;
+		++statesIt;
 	}
-	for (size_t i = 0; i < rightSize; i++)
+	for (const uint64_t &entry : rightSwap)
 	{
-		states.at(statesIndex + leftSize + i) = rightSwap.at(i);
+		*statesIt = entry;
+		++statesIt;
 	}
 
 	leftSwap.clear();

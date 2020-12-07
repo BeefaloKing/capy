@@ -60,7 +60,7 @@ int main (int argc, char* argv[])
 	}
 	if (filePath == nullptr)
 	{
-		printf("No output file provided.");
+		printf("No output file provided.\n");
 		return 1;
 	}
 

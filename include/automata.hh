@@ -7,7 +7,7 @@ class Automata
 {
 public:
 	Automata() = delete;
-	Automata(size_t cellSize, size_t outputBit);
+	Automata(size_t cellSize, size_t outputBit, uint8_t rule);
 	~Automata() = default;
 
 	void initState(uint64_t stateID);
@@ -19,4 +19,5 @@ private:
 	size_t cellSize;
 	uint64_t cellMask;
 	size_t outputBit;
+	uint8_t rule;
 };

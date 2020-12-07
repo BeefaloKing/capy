@@ -19,10 +19,11 @@ int main (int argc, char* argv[])
 
 	size_t cellSize = 0;
 	size_t outputBit = 0;
+	uint8_t rule = 0;
 	char* filePath = nullptr;
 
 	char flag;
-	while ((flag = getopt(argc, argv, "hs:o:")) != -1)
+	while ((flag = getopt(argc, argv, "hs:o:r:")) != -1)
 	{
 		switch (flag)
 		{
@@ -34,6 +35,9 @@ int main (int argc, char* argv[])
 			break;
 		case 'o':
 			sscanf(optarg, "%zu", &outputBit);
+			break;
+		case 'r':
+			sscanf(optarg, "%hhu", &rule);
 			break;
 		case '?':
 			printf("Flag -%c invalid or missing arguments.\nSee usage. \"capy.exe -h\"\n", optopt);
@@ -49,6 +53,19 @@ int main (int argc, char* argv[])
 	}
 
 	// Check for valid arguments before starting capy
+	switch (rule)
+	{
+	case 30:
+	case 45:
+	case 54:
+	case 90:
+	case 105:
+	case 124:
+		break;
+	default:
+		printf("Unsupported Automata rule.\n");
+		return 1;
+	}
 	if (cellSize < 1 || cellSize > 64)
 	{
 		printf("Automata size must be between 1 and 64.\n");
@@ -67,7 +84,7 @@ int main (int argc, char* argv[])
 
 	try
 	{
-		Capy capy {cellSize, outputBit, filePath};
+		Capy capy {cellSize, outputBit, rule, filePath};
 		capy.mainLoop();
 	}
 	catch (const std::exception &e)
@@ -93,6 +110,8 @@ void printUsage()
 		"\n"
 		"Options:\n"
 		"-h          Displays this message.\n"
+		"-r <rule>   Specifies the elementary cellular automata rule to use.\n"
+		"            Supported rules are 30, 45, 54, 90, 105, and 124.\n"
 		"-s <size>   Uses an automata of <size> cells. Must be between 1 and 64.\n"
 		"-o <cell>   Read output from the <cell>th cell. Must be between 0 and <size>.\n"
 		"            Cells are counted from right to left.\n"

@@ -10,7 +10,7 @@ class Capy
 {
 public:
 	Capy() = delete;
-	Capy(size_t cellSize, size_t outputBit, const std::string &outPath);
+	Capy(size_t cellSize, size_t outputBit, uint8_t rule, const std::string &outPath);
 	~Capy() = default;
 
 	void mainLoop();

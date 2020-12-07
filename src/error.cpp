@@ -45,3 +45,9 @@ void throwRange(const std::string &name, const uint64_t &index, const uint64_t &
 		std::to_string(index) + " when size is " + std::to_string(size) + ".\n";
 	throw std::out_of_range(errMsg);
 }
+
+void throwInvalidArg(const std::string &name, const std::string &value)
+{
+	std::string errMsg = "Invalid value " + value + " for argument \"" + name + "\"\n";
+	throw std::runtime_error(errMsg);
+}

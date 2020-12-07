@@ -11,9 +11,9 @@
 
 static const size_t PROGRESS_WIDTH = 50;
 
-Capy::Capy(size_t cellSize, size_t outputBit, const std::string &outPath) :
+Capy::Capy(size_t cellSize, size_t outputBit, uint8_t rule, const std::string &outPath) :
 	outFile(fopen(outPath.c_str(), "w")),
-	ca(cellSize, outputBit),
+	ca(cellSize, outputBit, rule),
 	data(cellSize, ca)
 {
 	if (outFile == nullptr)

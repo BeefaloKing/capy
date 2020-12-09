@@ -41,8 +41,8 @@ Options:
 - After core packages have updated, run `pacman -S git make gcc` to install necessary build tools.
 
 - You will also need to install the right gcc toolchain for your system.
-    - For 64 bit systems, run `-pacman -S mingw-w64-x86_64-gcc`.
-    - For 32 bit systems, run `-pacman -S mingw-w64-i686-gcc`.
+    - For 64 bit systems, run `pacman -S mingw-w64-x86_64-gcc`.
+    - For 32 bit systems, run `pacman -S mingw-w64-i686-gcc`.
 
 ## Building
 - Close MSYS2 if you have it open and launch it again from the `MSYS2 MinGW 64-bit` start menu shortcut.
